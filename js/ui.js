@@ -116,6 +116,8 @@ const UI = {
       '<path d="M3 9 h4 l5 -4 v14 l-5 -4 h-4 z" fill="currentColor"/>' + waves + '</svg>';
     hudButton.setAttribute('aria-label', Sound.on ? '聲音：開' : '聲音：關');
     homeButton.textContent = Sound.on ? '聲音：開' : '聲音：關';
+    // 首頁的箭頭提示：聲音還關著才顯示
+    document.getElementById('sound-hint').hidden = Sound.on;
   },
 
   // 另開分頁的小圖示（方框＋往右上的箭頭）

@@ -69,7 +69,6 @@ const Game = {
     UI.updateHud(Game.s);
     UI.showScreen('game');
     Sound.play('start');
-    Sound.startMusic();
     const s = Game.s;
     requestAnimationFrame(() => Game.loop(s));
   },
@@ -394,7 +393,6 @@ const Game = {
     const s = Game.s;
     s.running = false;
     s.endedAt = Game.now();
-    Sound.stopMusic();
     Sound.play('gameover');
 
     // 還沒結束的事件都收起來

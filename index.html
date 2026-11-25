@@ -45,7 +45,14 @@
       <div class="home-buttons">
         <button id="btn-start" class="btn btn-main" type="button">直接開始玩</button>
         <button id="btn-rules" class="btn btn-sub" type="button">先了解規則</button>
-        <button id="btn-sound-home" class="text-btn" type="button">聲音：開</button>
+        <!-- 聲音開關（預設關）＋旁邊的箭頭提示：聲音打開後提示就會藏起來（ui.js 的 refreshSoundButtons） -->
+        <div class="sound-row">
+          <button id="btn-sound-home" class="text-btn" type="button">聲音：關</button>
+          <p id="sound-hint" class="sound-hint">
+            <svg class="hint-arrow" viewBox="0 0 28 16" aria-hidden="true"><path d="M26 8 H4 M10 2 L3 8 L10 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            打開聲音，有音效提示更好玩！
+          </p>
+        </div>
       </div>
       <p class="note">候選人都是虛構的動物，號次每局隨機分配。</p>
     </div>

@@ -3,13 +3,13 @@
 //
 // 用瀏覽器內建的 Web Audio API 即時「合成」音效和背景音樂，
 // 不需要任何音效檔、也不用安裝套件，所以沒有版權問題（旋律是自己寫的）。
-// 可以關掉，預設開啟，開關設定會記在這台裝置的瀏覽器裡（localStorage）。
+// 預設關閉；打開後背景音樂會一直播（首頁、規則頁、遊戲、結果頁都有），
+// 開關設定會記在這台裝置的瀏覽器裡（localStorage）。
 // =============================================
 
 const Sound = {
   ctx: null, //  瀏覽器的音訊引擎（第一次按按鈕時才建立）
-  on: true, //   音效開或關
-  musicWanted: false, // 遊戲是不是想要播背景音樂（聲音關掉時記著，打開再繼續）
+  on: false, //  聲音（音效＋背景音樂）開或關，預設關
   musicTimer: null, //   排音符用的計時器
   musicStep: 0, //       現在排到旋律的第幾個音
   musicNext: 0, //       下一個音要在什麼時間響（音訊引擎的秒數）
@@ -63,13 +63,23 @@ const Sound = {
     ],
   },
 
-  // 網頁載入時：讀取上次的開關設定
+  // 網頁載入時：讀取上次的開關設定（沒設定過就是關）
   init() {
     try {
-      Sound.on = localStorage.getItem('soundOn') !== 'off';
+      Sound.on = localStorage.getItem('soundOn') === 'on';
     } catch (e) {
-      Sound.on = true; // 無痕模式等情況讀不到，就用預設值
+      Sound.on = false; // 無痕模式等情況讀不到，就用預設值
     }
+    // 上次有開聲音的話：瀏覽器規定要等使用者先點一下畫面才能出聲，點了就開始播音樂
+    const startOnFirstTap = () => {
+      document.removeEventListener('pointerup', startOnFirstTap);
+      document.removeEventListener('keydown', startOnFirstTap);
+      if (!Sound.on) return;
+      Sound.unlock();
+      Sound.playMusic();
+    };
+    document.addEventListener('pointerup', startOnFirstTap);
+    document.addEventListener('keydown', startOnFirstTap);
     // 切到別的 App 或分頁時，聲音（包含背景音樂）先停，回來再繼續
     document.addEventListener('visibilitychange', () => {
       if (!Sound.ctx) return;
@@ -98,7 +108,7 @@ const Sound = {
     }
     if (Sound.on) {
       Sound.unlock();
-      if (Sound.musicWanted) Sound.playMusic(); // 遊戲中重新打開：音樂接著播
+      Sound.playMusic(); // 打開聲音就直接播背景音樂
     } else {
       Sound.haltMusic();
     }
@@ -158,18 +168,7 @@ const Sound = {
     ],
   },
 
-  // 遊戲開始時呼叫：想要播音樂（聲音關著就先記著）
-  startMusic() {
-    Sound.musicWanted = true;
-    Sound.playMusic();
-  },
-
-  // 遊戲結束時呼叫：不要音樂了
-  stopMusic() {
-    Sound.musicWanted = false;
-    Sound.haltMusic();
-  },
-
+  // 開始播背景音樂（聲音關著、或已經在播，就不用做）
   playMusic() {
     if (!Sound.on || !Sound.ctx || Sound.musicTimer) return;
     Sound.musicStep = 0;
@@ -178,6 +177,7 @@ const Sound = {
     Sound.musicTimer = setInterval(Sound.scheduleMusic, 100);
   },
 
+  // 停止背景音樂
   haltMusic() {
     clearInterval(Sound.musicTimer);
     Sound.musicTimer = null;

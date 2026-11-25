@@ -199,6 +199,41 @@ body {
   cursor: pointer;
 }
 
+/* 首頁的聲音開關＋箭頭提示（排成一行） */
+.sound-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sound-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bad);
+}
+
+.sound-hint[hidden] {
+  display: none;
+}
+
+/* 箭頭指著聲音開關，輕輕地左右動，吸引注意 */
+.hint-arrow {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 15px;
+  animation: hint-nudge 1.2s ease-in-out infinite;
+}
+
+@keyframes hint-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-5px); }
+}
+
 /* 連結：底線＋另開分頁的小圖示 */
 a {
   color: var(--ink);
@@ -611,7 +646,8 @@ a {
     opacity: 0.25;
   }
 
-  .banner {
+  .banner,
+  .hint-arrow {
     animation: none;
   }
 }
