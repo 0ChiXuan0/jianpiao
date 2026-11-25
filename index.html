@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FFF6E6">
+  <title>監票大作戰</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 選票上的圖案（一疊票的紋路、撕破的票）放在這裡，遊戲畫面和規則頁的截圖都會用到 -->
+  <svg class="svg-defs" width="0" height="0" aria-hidden="true">
+    <defs>
+      <!-- 一疊票的紋路（一條一條的紙） -->
+      <pattern id="paper-lines" width="12" height="4" patternUnits="userSpaceOnUse">
+        <rect width="12" height="4" fill="#FBD3E1"/>
+        <line x1="0" y1="3.5" x2="12" y2="3.5" stroke="#E39AB5" stroke-width="1"/>
+      </pattern>
+      <!-- 「票被撕破」的廢票：白色的部分留著，黑色的部分（右上角）被切掉 -->
+      <mask id="tear-mask" maskUnits="userSpaceOnUse" x="0" y="180" width="140" height="100">
+        <rect x="0" y="180" width="140" height="100" fill="#FFFFFF"/>
+        <polygon points="86,190 120,190 120,250 112,246 115,238 106,232 110,222 99,216 102,206 92,200" fill="#000000"/>
+      </mask>
+    </defs>
+  </svg>
+
+  <!-- ===================================================
+       畫面一：首頁
+       =================================================== -->
+  <section id="screen-home" class="screen scroll">
+    <div class="home-inner">
+      <!-- 熊舉票的動畫：程式複製遊戲裡的熊放進來（ui.js 的 startHomeBear） -->
+      <div id="home-bear" class="home-bear" aria-hidden="true"></div>
+      <h1 class="title">監票大作戰</h1>
+      <p class="subtitle">動物村要選村長啦！<br>開票所的志工很認真，就是有點迷糊。</p>
+      <ul class="rules">
+        <li>看到志工搞錯了，點一下提醒他</li>
+        <li>看起來怪、其實沒問題的，不用點</li>
+        <li>沒提醒到或點錯了，扣 1 顆愛心</li>
+        <li>亂點沒事的地方會扣分</li>
+        <li>開完票，一起核對票數</li>
+      </ul>
+      <div class="home-buttons">
+        <button id="btn-start" class="btn btn-main" type="button">直接開始玩</button>
+        <button id="btn-rules" class="btn btn-sub" type="button">先了解規則</button>
+        <button id="btn-sound-home" class="text-btn" type="button">聲音：開</button>
+      </div>
+      <p class="note">候選人都是虛構的動物，號次每局隨機分配。</p>
+    </div>
+  </section>
+
+  <!-- ===================================================
+       畫面：先了解規則（每種事件的教學卡＋遊戲截圖，由 ui.js 產生）
+       =================================================== -->
+  <section id="screen-rules" class="screen scroll" hidden>
+    <div class="rules-inner">
+      <button id="btn-rules-back" class="text-btn" type="button">← 回首頁</button>
+      <h1 class="rules-title">開票所小教室</h1>
+      <p class="rules-lead">動物村的志工有時候會搞錯下面這些事。<br>看到了，就點一下提醒他們！</p>
+      <div id="rules-violations"></div>
+
+      <h2 class="section-title">這些看起來怪，其實沒問題</h2>
+      <p class="rules-lead">點了反而會扣愛心喔。</p>
+      <div id="rules-traps"></div>
+
+      <div class="rules-buttons">
+        <button id="btn-rules-start" class="btn btn-main" type="button">開始玩</button>
+        <a class="btn btn-sub btn-link" href="https://youtu.be/NZgwPHcZwV4?t=1550" target="_blank" rel="noopener">看中選會教學<span class="nowrap">影片<svg class="ext-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2h5v5M14 2L7 9M12 10v4H2V4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr-only">（另開新分頁）</span></span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================
+       畫面二：遊戲中
+       =================================================== -->
+  <section id="screen-game" class="screen game" hidden>
+    <!-- 上方資訊列（HUD） -->
+    <header class="hud">
+      <div id="hud-hearts" class="hearts" role="img" aria-label="愛心剩 5 顆"></div>
+      <div class="hud-box"><small>分數</small><b id="hud-score">0</b></div>
+      <div class="hud-box"><small>連擊</small><b id="hud-combo">0</b><span id="hud-mul" class="mul">×1.0</span></div>
+      <button id="btn-sound" class="icon-btn" type="button" aria-label="聲音開關"></button>
+    </header>
+
+    <!-- 開票所場景（SVG）
+         規則：
+         1. 每個可以點的物件是一個 class="obj" 的 <g>，id 就是 events.js 裡的點擊目標
+         2. 物件裡的 <g data-show="外觀名稱"> 是不同外觀，程式一次只顯示一種
+            （data-default 是平常的外觀，沒寫就是 normal）
+         3. 每個物件有一個透明的 <rect class="hit">，用來把點擊範圍放大
+         4. class="wob"  ：快過期時會抖動提醒的部分
+            class="bob"  ：動物平常的呼吸、隨機小動作
+            class="eyes" ：會眨眼的眼睛；class="ears"：會動的耳朵 -->
+    <div id="scene-wrap" class="scene-wrap">
+      <!-- 畫面上方的大字公告（主任管理員宣布、停電了⋯⋯），由程式控制 -->
+      <div id="banner" class="banner" role="status" hidden>
+        <small id="banner-who"></small>
+        <b id="banner-text"></b>
+      </div>
+      <svg id="scene" class="scene-svg" viewBox="0 0 390 720" preserveAspectRatio="xMidYMid meet" aria-label="開票所">
+
+        <!-- 所有圖形預設都有粗的深色外框 -->
+        <g stroke="#4A3B52" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+
+          <!-- ========== 背景：牆面和地板 ========== -->
+          <g id="background">
+            <rect x="0" y="0" width="390" height="252" fill="#FFF3DC" stroke="none"/>
+            <rect x="0" y="252" width="390" height="468" fill="#F6E3CC" stroke="none"/>
+            <g stroke="#EDD3B4" stroke-width="2">
+              <line x1="0" y1="440" x2="390" y2="440"/>
+              <line x1="0" y1="566" x2="390" y2="566"/>
+            </g>
+            <rect x="-5" y="244" width="400" height="10" fill="#EBC9A3"/>
+          </g>
+
+          <!-- ========== 門 ========== -->
+          <g id="door" class="obj">
+            <g class="wob">
+              <!-- 正常：門開著 -->
+              <g data-show="normal">
+                <rect x="16" y="66" width="70" height="180" fill="#CDEBFF"/>
+                <rect x="17" y="196" width="68" height="49" fill="#BFE8C8" stroke="none"/>
+                <polygon points="86,66 104,56 104,256 86,246" fill="#FFCFA8"/>
+                <circle cx="98" cy="160" r="3" fill="#4A3B52" stroke="none"/>
+              </g>
+              <!-- 出事：門被關起來 -->
+              <g data-show="closed">
+                <rect x="16" y="66" width="70" height="180" fill="#FFCFA8"/>
+                <rect x="25" y="80" width="46" height="62" rx="4" fill="none" stroke-width="2.5"/>
+                <rect x="25" y="156" width="46" height="76" rx="4" fill="none" stroke-width="2.5"/>
+                <circle cx="79" cy="160" r="4" fill="#4A3B52" stroke="none"/>
+              </g>
+              <rect x="12" y="62" width="78" height="186" rx="4" fill="none" stroke-width="5"/>
+              <rect x="22" y="38" width="58" height="18" rx="5" fill="#A8E6CF"/>
+              <text x="51" y="52" class="sign-text">出入口</text>
+            </g>
+            <rect class="hit" x="8" y="34" width="100" height="224"/>
+          </g>
+
+          <!-- ========== 左邊的窗戶 ========== -->
+          <g id="window-left" class="obj">
+            <g class="wob">
+              <g transform="translate(112,22)">
+                <rect x="-6" y="78" width="98" height="8" rx="3" fill="#FFFFFF"/>
+                <rect x="0" y="0" width="86" height="78" rx="6" fill="#CDEBFF"/>
+                <!-- 正常：窗戶開著，看得到外面 -->
+                <g data-show="normal">
+                  <g fill="#FFFFFF" stroke="none">
+                    <circle cx="34" cy="34" r="9"/><circle cx="46" cy="28" r="11"/><circle cx="58" cy="35" r="8"/>
+                    <rect x="32" y="33" width="28" height="10" rx="5"/>
+                  </g>
+                  <path d="M26 58 q8 -5 16 0 t16 0" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+                  <path d="M3 4 H15 Q11 40 15 74 H3 Z" fill="#CDB4F0" stroke-width="2.5"/>
+                  <path d="M83 4 H71 Q75 40 71 74 H83 Z" fill="#CDB4F0" stroke-width="2.5"/>
+                </g>
+                <!-- 出事：窗簾整個拉起來 -->
+                <g data-show="closed">
+                  <rect x="3" y="4" width="41" height="70" fill="#CDB4F0" stroke-width="2.5"/>
+                  <rect x="42" y="4" width="41" height="70" fill="#CDB4F0" stroke-width="2.5"/>
+                  <path d="M14 8 V70 M25 8 V70 M35 8 V70 M52 8 V70 M62 8 V70 M73 8 V70" fill="none" stroke="#9F86C9" stroke-width="2"/>
+                </g>
+                <rect x="0" y="0" width="86" height="78" rx="6" fill="none" stroke-width="4"/>
+                <line x1="-6" y1="3" x2="92" y2="3" stroke-width="4"/>
+              </g>
+            </g>
+            <rect class="hit" x="104" y="14" width="102" height="96"/>
+          </g>
+
+          <!-- ========== 右邊的窗戶（畫法和左邊一樣，只是位置不同） ========== -->
+          <g id="window-right" class="obj">
+            <g class="wob">
+              <g transform="translate(292,22)">
+                <rect x="-6" y="78" width="98" height="8" rx="3" fill="#FFFFFF"/>
+                <rect x="0" y="0" width="86" height="78" rx="6" fill="#CDEBFF"/>
+                <g data-show="normal">
+                  <g fill="#FFFFFF" stroke="none">
+                    <circle cx="34" cy="34" r="9"/><circle cx="46" cy="28" r="11"/><circle cx="58" cy="35" r="8"/>
+                    <rect x="32" y="33" width="28" height="10" rx="5"/>
+                  </g>
+                  <path d="M26 58 q8 -5 16 0 t16 0" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+                  <path d="M3 4 H15 Q11 40 15 74 H3 Z" fill="#CDB4F0" stroke-width="2.5"/>
+                  <path d="M83 4 H71 Q75 40 71 74 H83 Z" fill="#CDB4F0" stroke-width="2.5"/>
+                </g>
+                <g data-show="closed">
+                  <rect x="3" y="4" width="41" height="70" fill="#CDB4F0" stroke-width="2.5"/>
+                  <rect x="42" y="4" width="41" height="70" fill="#CDB4F0" stroke-width="2.5"/>
+                  <path d="M14 8 V70 M25 8 V70 M35 8 V70 M52 8 V70 M62 8 V70 M73 8 V70" fill="none" stroke="#9F86C9" stroke-width="2"/>
+                </g>
+                <rect x="0" y="0" width="86" height="78" rx="6" fill="none" stroke-width="4"/>
+                <line x1="-6" y1="3" x2="92" y2="3" stroke-width="4"/>
+              </g>
+            </g>
+            <rect class="hit" x="284" y="14" width="102" height="96"/>
+          </g>
+
+          <!-- ========== 投開票所的牌子（裝飾） ========== -->
+          <g id="sign">
+            <rect x="212" y="34" width="68" height="44" rx="8" fill="#FFE68A"/>
+            <text x="246" y="52" class="sign-text">第 0612 號</text>
+            <text x="246" y="70" class="sign-text">投開票所</text>
+          </g>
+
+          <!-- ========== 記票黑板＋得票計票紙（參考真實計票紙：白紙紅格，用麥克筆畫正字） ========== -->
+          <g id="board" class="obj">
+            <g class="wob">
+              <rect x="110" y="112" width="204" height="112" rx="8" fill="#D9A877"/>
+              <rect x="116" y="118" width="192" height="100" rx="3" fill="#2F4A43"/>
+              <!-- 計票紙 -->
+              <rect x="118" y="116" width="188" height="104" fill="#FFFFFF" stroke-width="2"/>
+              <!-- 紅色格線：4 欄（3 位候選人＋無效票），每欄再分 2 小欄、3 列 -->
+              <g fill="none" stroke="#E05A6A" stroke-width="1">
+                <rect x="121" y="119" width="182" height="98"/>
+                <line x1="165" y1="119" x2="165" y2="217"/>
+                <line x1="212" y1="119" x2="212" y2="217"/>
+                <line x1="259" y1="119" x2="259" y2="217"/>
+                <line x1="121" y1="146" x2="303" y2="146"/>
+              </g>
+              <g fill="none" stroke="#F4B6BF" stroke-width="0.8">
+                <line x1="121" y1="170" x2="303" y2="170"/>
+                <line x1="121" y1="194" x2="303" y2="194"/>
+                <line x1="141.5" y1="146" x2="141.5" y2="217"/>
+                <line x1="188.5" y1="146" x2="188.5" y2="217"/>
+                <line x1="235.5" y1="146" x2="235.5" y2="217"/>
+                <line x1="282.5" y1="146" x2="282.5" y2="217"/>
+              </g>
+              <!-- 欄位標題：號次（紅字）＋候選人（emoji 跟上方的愛心差不多大），每局由程式填入 -->
+              <text id="board-head-0" x="129" y="139" class="sheet-head">1</text>
+              <text id="board-head-1" x="176" y="139" class="sheet-head">2</text>
+              <text id="board-head-2" x="223" y="139" class="sheet-head">3</text>
+              <text id="board-emoji-0" x="149" y="141" class="sheet-emoji">🐱</text>
+              <text id="board-emoji-1" x="196" y="141" class="sheet-emoji">🐶</text>
+              <text id="board-emoji-2" x="243" y="141" class="sheet-emoji">🦜</text>
+              <text x="282.5" y="139" class="sheet-head">無效</text>
+              <!-- 正字由程式一筆一筆畫在這四個群組裡（tally-3 是無效票） -->
+              <g id="tally-0"></g>
+              <g id="tally-1"></g>
+              <g id="tally-2"></g>
+              <g id="tally-3"></g>
+              <!-- 膠帶 -->
+              <rect x="122" y="111" width="18" height="8" fill="#FFE68A" opacity="0.85" stroke="none" transform="rotate(-10 131 115)"/>
+              <rect x="284" y="111" width="18" height="8" fill="#FFE68A" opacity="0.85" stroke="none" transform="rotate(10 293 115)"/>
+              <!-- 麥克筆：停在最新畫的那一筆旁邊 -->
+              <g id="tally-pen" style="display:none">
+                <!-- 筆身往右下斜（往貓頭鷹那邊），才不會擋到上面的候選人 -->
+                <g transform="rotate(120)">
+                  <polygon points="-2.5,-4 2.5,-4 0,0" fill="#2B2433" stroke="none"/>
+                  <rect x="-3" y="-17" width="6" height="13" rx="1.5" fill="#2B2433" stroke="#FFFFFF" stroke-width="1"/>
+                  <rect x="-3" y="-23" width="6" height="7" rx="2" fill="#E05A6A" stroke="#FFFFFF" stroke-width="1"/>
+                </g>
+              </g>
+              <rect x="130" y="222" width="164" height="6" rx="3" fill="#D9A877"/>
+            </g>
+            <rect class="hit" x="110" y="108" width="204" height="120"/>
+          </g>
+
+          <!-- ========== 記票員：貓頭鷹 ========== -->
+          <g id="owl" class="obj" data-default="idle">
+            <g class="wob">
+              <rect x="320" y="222" width="66" height="14" rx="4" fill="#D9A877"/>
+              <text x="353" y="233" class="placard-text">記票員</text>
+              <g class="bob">
+                <polygon points="334,162 329,141 347,155" fill="#C9A273"/>
+                <polygon points="372,162 377,141 359,155" fill="#C9A273"/>
+                <ellipse cx="353" cy="188" rx="29" ry="33" fill="#C9A273"/>
+                <ellipse cx="353" cy="201" rx="17" ry="17" fill="#F3E2C4" stroke="none"/>
+                <g class="eyes">
+                  <circle cx="342" cy="176" r="10" fill="#FFFFFF"/>
+                  <circle cx="364" cy="176" r="10" fill="#FFFFFF"/>
+                  <circle cx="343" cy="177" r="4" fill="#4A3B52" stroke="none"/>
+                  <circle cx="363" cy="177" r="4" fill="#4A3B52" stroke="none"/>
+                </g>
+                <polygon points="349,186 357,186 353,194" fill="#F7A65B" stroke-width="2"/>
+                <!-- 翅膀：休息 -->
+                <g data-show="idle">
+                  <ellipse cx="326" cy="196" rx="7" ry="15" fill="#B38B5E"/>
+                  <ellipse cx="380" cy="196" rx="7" ry="15" fill="#B38B5E"/>
+                </g>
+                <!-- 翅膀：拿麥克筆在計票紙上寫字 -->
+                <g data-show="write">
+                  <path d="M330 194 Q318 188 313 178" fill="none" stroke="#4A3B52" stroke-width="13"/>
+                  <path d="M330 194 Q318 188 313 178" fill="none" stroke="#B38B5E" stroke-width="7"/>
+                  <rect x="303" y="168" width="13" height="5" rx="2" fill="#2B2433" stroke-width="1.5" transform="rotate(-35 310 170)"/>
+                  <ellipse cx="380" cy="196" rx="7" ry="15" fill="#B38B5E"/>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="316" y="136" width="72" height="100"/>
+          </g>
+
+          <!-- ========== 唱票員：熊 ==========
+               姿勢（data-show）：
+               idle  = 手放在桌上
+               raise = 把選票高高舉起（正常唱票）
+               chest = 票拿在胸前、背面朝外（「沒把票舉高」事件） -->
+          <g id="bear" class="obj" data-default="idle">
+            <g class="wob">
+              <g class="bob">
+                <rect x="30" y="330" width="72" height="50" rx="24" fill="#C8A27A"/>
+                <!-- 舉票的手臂（畫在頭後面） -->
+                <g data-show="raise">
+                  <path d="M36 344 L22 268 M96 344 L110 268" fill="none" stroke="#4A3B52" stroke-width="17"/>
+                  <path d="M36 344 L22 268 M96 344 L110 268" fill="none" stroke="#C8A27A" stroke-width="11"/>
+                </g>
+                <circle cx="42" cy="282" r="11" fill="#C8A27A"/>
+                <circle cx="90" cy="282" r="11" fill="#C8A27A"/>
+                <circle cx="42" cy="282" r="5" fill="#EED9BE" stroke="none"/>
+                <circle cx="90" cy="282" r="5" fill="#EED9BE" stroke="none"/>
+                <circle cx="66" cy="306" r="30" fill="#C8A27A"/>
+                <ellipse cx="66" cy="317" rx="13" ry="9" fill="#EED9BE"/>
+                <ellipse cx="66" cy="312" rx="5" ry="3.5" fill="#4A3B52" stroke="none"/>
+                <path d="M60 319 q6 5 12 0" fill="none" stroke-width="2.5"/>
+                <g class="eyes">
+                  <circle cx="54" cy="300" r="3.5" fill="#4A3B52" stroke="none"/>
+                  <circle cx="78" cy="300" r="3.5" fill="#4A3B52" stroke="none"/>
+                </g>
+                <circle cx="47" cy="313" r="4" fill="#FFB3C7" stroke="none"/>
+                <circle cx="85" cy="313" r="4" fill="#FFB3C7" stroke="none"/>
+
+                <!-- 姿勢 idle：手放在桌上 -->
+                <g data-show="idle">
+                  <ellipse cx="38" cy="362" rx="11" ry="9" fill="#C8A27A"/>
+                  <ellipse cx="94" cy="362" rx="11" ry="9" fill="#C8A27A"/>
+                </g>
+
+                <!-- 姿勢 raise：選票正面朝參觀席 -->
+                <g data-show="raise">
+                  <!-- 選票本身：粉紅色，每位候選人一直欄（號次、照片、空白處蓋章），參考真實選票簡化。
+                       「票被撕破」的廢票會在這一組加上 mask，切掉右上角 -->
+                  <g id="ballot-paper">
+                    <rect id="ballot-bg" x="16" y="194" width="100" height="74" rx="3" fill="#F9B8CF"/>
+                    <g id="ballot-grid" fill="none" stroke="#D86F95" stroke-width="1.2">
+                      <rect x="20" y="198" width="92" height="66"/>
+                      <line x1="32" y1="198" x2="32" y2="264"/>
+                      <line x1="58.7" y1="198" x2="58.7" y2="264"/>
+                      <line x1="85.3" y1="198" x2="85.3" y2="264"/>
+                      <line x1="32" y1="216" x2="112" y2="216"/>
+                      <!-- 左邊直書的選舉名稱（簡化成虛線） -->
+                      <path d="M26 202 V218 M26 236 V260" stroke-dasharray="2 2"/>
+                    </g>
+                    <!-- 左邊的紅色關防（選委會發的票才有） -->
+                    <rect id="ballot-official" x="22" y="222" width="8" height="10" fill="none" stroke="#E0303F" stroke-width="1.2"/>
+                    <text x="45.3" y="211" class="ballot-num">1</text>
+                    <text x="72" y="211" class="ballot-num">2</text>
+                    <text x="98.7" y="211" class="ballot-num">3</text>
+                    <text id="ballot-emoji-0" x="45.3" y="238" class="ballot-emoji">🐱</text>
+                    <text id="ballot-emoji-1" x="72" y="238" class="ballot-emoji">🐶</text>
+                    <text id="ballot-emoji-2" x="98.7" y="238" class="ballot-emoji">🦜</text>
+                    <!-- 圈選章印（中選會圈選章的樣子），程式會把它移到被圈的那一欄 -->
+                    <g id="ballot-stamp" transform="translate(45.3, 253)">
+                      <circle r="7.5" fill="none" stroke="#E0303F" stroke-width="1.8"/>
+                      <path d="M0 -7.5 V7.5 M0 0.4 L-5.3 5.3" fill="none" stroke="#E0303F" stroke-width="1.8" stroke-linecap="butt"/>
+                    </g>
+                    <!-- 第二個章印（「圈了兩個人」「圈了又塗改」的廢票才會出現） -->
+                    <g id="ballot-stamp-2" style="display:none">
+                      <circle r="7.5" fill="none" stroke="#E0303F" stroke-width="1.8"/>
+                      <path d="M0 -7.5 V7.5 M0 0.4 L-5.3 5.3" fill="none" stroke="#E0303F" stroke-width="1.8" stroke-linecap="butt"/>
+                    </g>
+                    <!-- 以下都是廢票的記號，平常藏起來，位置由程式決定 -->
+                    <!-- 圈選後又塗改：在章印上打一個藍色的叉 -->
+                    <path id="ballot-cross" style="display:none" d="M-8 -8 L8 8 M8 -8 L-8 8" fill="none" stroke="#3F6FD8" stroke-width="2"/>
+                    <!-- 不是用選委會的圈選章：自己畫的三角形 -->
+                    <path id="ballot-triangle" style="display:none" d="M0 -7 L7 6 L-7 6 Z" fill="none" stroke="#E0303F" stroke-width="1.8"/>
+                    <!-- 簽名 -->
+                    <path id="ballot-sign" style="display:none" d="M36 258 q5 -10 9 -1 t9 -3 t9 5 t9 -7 t9 4 t9 -3" fill="none" stroke-width="2"/>
+                    <!-- 蓋了自己的印章 -->
+                    <g id="ballot-seal" style="display:none">
+                      <rect x="-6" y="-6" width="12" height="12" fill="none" stroke="#E0303F" stroke-width="1.5"/>
+                      <text x="0" y="3" class="ballot-seal-text">印</text>
+                    </g>
+                    <!-- 按了指印 -->
+                    <g id="ballot-print" style="display:none" fill="none" stroke="#E0303F" stroke-width="1">
+                      <ellipse rx="5" ry="6.5"/>
+                      <ellipse rx="3.2" ry="4.5"/>
+                      <ellipse rx="1.4" ry="2.4"/>
+                    </g>
+                    <!-- 畫了符號（打勾） -->
+                    <path id="ballot-check" style="display:none" d="M-6 0 L-2 5 L6 -6" fill="none" stroke="#3F6FD8" stroke-width="2"/>
+                    <!-- 票面髒掉，蓋住章印，看不出圈給誰 -->
+                    <path id="ballot-smudge" style="display:none" d="M-11 -6 C-8 -12 2 -11 6 -9 C12 -8 13 -2 10 2 C13 6 8 11 2 9 C-3 12 -10 10 -11 5 C-14 2 -13 -3 -11 -6 Z" fill="#3B3138" stroke="none"/>
+                  </g>
+                  <!-- 票被撕破的鋸齒邊 -->
+                  <path id="ballot-tear" style="display:none" d="M88.4 194 L92 200 L102 206 L99 216 L110 222 L106 232 L115 238 L112 246 L116 248" fill="none" stroke-width="1.5"/>
+                  <circle cx="20" cy="268" r="8" fill="#C8A27A"/>
+                  <circle cx="112" cy="268" r="8" fill="#C8A27A"/>
+                </g>
+
+                <!-- 姿勢 chest：票拿在胸前，參觀席只看得到背面 -->
+                <g data-show="chest">
+                  <g transform="rotate(-10 66 352)">
+                    <rect x="44" y="332" width="44" height="38" rx="3" fill="#F3CFDC"/>
+                    <path d="M50 342 H82 M50 351 H82 M50 360 H74" fill="none" stroke="#E3A9BE" stroke-width="2"/>
+                  </g>
+                  <circle cx="46" cy="358" r="8" fill="#C8A27A"/>
+                  <circle cx="86" cy="350" r="8" fill="#C8A27A"/>
+                </g>
+              </g>
+
+              <!-- 唱票的對話框（程式控制顯示和文字） -->
+              <g id="bubble" style="display:none">
+                <polygon points="128,282 114,298 140,288" fill="#FFFFFF"/>
+                <rect x="120" y="258" width="170" height="32" rx="14" fill="#FFFFFF"/>
+                <text id="bubble-text" x="205" y="279" class="bubble-text"></text>
+              </g>
+            </g>
+            <rect class="hit" x="18" y="272" width="98" height="104"/>
+          </g>
+
+          <!-- ========== 檢票員：兔子 ========== -->
+          <g id="rabbit" class="obj" data-default="idle">
+            <g class="wob">
+              <g class="bob">
+                <rect x="292" y="332" width="64" height="48" rx="22" fill="#FBF7FF"/>
+                <g class="ears">
+                  <ellipse cx="311" cy="264" rx="9" ry="24" fill="#FBF7FF" transform="rotate(-8 311 264)"/>
+                  <ellipse cx="337" cy="264" rx="9" ry="24" fill="#FBF7FF" transform="rotate(8 337 264)"/>
+                  <ellipse cx="311" cy="266" rx="4" ry="15" fill="#FFC4D3" stroke="none" transform="rotate(-8 311 266)"/>
+                  <ellipse cx="337" cy="266" rx="4" ry="15" fill="#FFC4D3" stroke="none" transform="rotate(8 337 266)"/>
+                </g>
+                <circle cx="324" cy="306" r="28" fill="#FBF7FF"/>
+                <g class="eyes">
+                  <circle cx="314" cy="302" r="3.5" fill="#4A3B52" stroke="none"/>
+                  <circle cx="334" cy="302" r="3.5" fill="#4A3B52" stroke="none"/>
+                </g>
+                <path d="M320 309 h8 l-4 4 z" fill="#FF9DB5" stroke="none"/>
+                <path d="M324 313 q-3 4 -7 2 M324 313 q3 4 7 2" fill="none" stroke-width="2"/>
+                <circle cx="306" cy="312" r="4" fill="#FFC4D3" stroke="none"/>
+                <circle cx="342" cy="312" r="4" fill="#FFC4D3" stroke="none"/>
+                <!-- 手：休息 -->
+                <g data-show="idle">
+                  <ellipse cx="296" cy="362" rx="10" ry="9" fill="#FBF7FF"/>
+                  <ellipse cx="352" cy="362" rx="10" ry="9" fill="#FBF7FF"/>
+                </g>
+                <!-- 手：伸進票匭拿票 -->
+                <g data-show="reach">
+                  <path d="M300 346 Q270 330 234 320" fill="none" stroke="#4A3B52" stroke-width="16"/>
+                  <path d="M300 346 Q270 330 234 320" fill="none" stroke="#FBF7FF" stroke-width="10"/>
+                  <ellipse cx="352" cy="362" rx="10" ry="9" fill="#FBF7FF"/>
+                </g>
+                <!-- 出事：先把一疊票抱在胸前 -->
+                <g data-show="stacked">
+                  <rect x="306" y="334" width="38" height="30" rx="2" fill="url(#paper-lines)" stroke-width="2.5"/>
+                  <rect x="304" y="328" width="38" height="8" rx="2" fill="#FFFDF7" stroke-width="2" transform="rotate(-4 323 332)"/>
+                  <rect x="308" y="322" width="36" height="8" rx="2" fill="#FFFDF7" stroke-width="2" transform="rotate(5 326 326)"/>
+                  <ellipse cx="302" cy="350" rx="9" ry="8" fill="#FBF7FF"/>
+                  <ellipse cx="347" cy="350" rx="9" ry="8" fill="#FBF7FF"/>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="284" y="238" width="80" height="138"/>
+          </g>
+
+          <!-- ========== 開票桌＋名牌（裝飾） ========== -->
+          <g id="table">
+            <rect x="6" y="374" width="378" height="14" rx="4" fill="#F5D2A8"/>
+            <rect x="14" y="388" width="362" height="36" fill="#EDBE8E"/>
+            <rect x="38" y="394" width="56" height="20" rx="4" fill="#FFFFFF" stroke-width="2.5"/>
+            <text x="66" y="408" class="placard-text">唱票員</text>
+            <rect x="296" y="394" width="56" height="20" rx="4" fill="#FFFFFF" stroke-width="2.5"/>
+            <text x="324" y="408" class="placard-text">檢票員</text>
+          </g>
+
+          <!-- ========== 票匭（參考真實票匭：灰白箱子、上方粉紅標示、兩側封條＋紅色印記） ========== -->
+          <g id="ballot-box" class="obj">
+            <g class="wob">
+              <!-- 票匭本體（正常、封條破了都用這個） -->
+              <g data-show="normal seal-broken">
+                <rect x="154" y="306" width="82" height="70" rx="3" fill="#ECEEF2"/>
+                <rect x="150" y="298" width="90" height="10" rx="3" fill="#DADDE3"/>
+                <rect x="176" y="300.5" width="38" height="4" rx="2" fill="#4A3B52" stroke="none"/>
+                <!-- 上方的粉紅色標示 -->
+                <rect x="166" y="310" width="58" height="14" rx="2" fill="#F9B8CF" stroke-width="1.5"/>
+                <text x="195" y="320.5" class="box-head">村長選舉</text>
+                <!-- 投票匭字樣 -->
+                <rect x="177" y="352" width="36" height="14" rx="7" fill="#8E93A0" stroke="none"/>
+                <text x="195" y="362" class="box-label">投票匭</text>
+              </g>
+              <!-- 左邊封條（正常、封條破了都完整） -->
+              <g data-show="normal seal-broken">
+                <rect x="158" y="328" width="10" height="44" fill="#FFFFFF" stroke-width="1.5"/>
+                <rect x="160" y="344" width="6" height="6" fill="none" stroke="#E0303F" stroke-width="1.5"/>
+              </g>
+              <!-- 右邊封條：正常是完整的 -->
+              <g data-show="normal">
+                <rect x="222" y="328" width="10" height="44" fill="#FFFFFF" stroke-width="1.5"/>
+                <rect x="224" y="344" width="6" height="6" fill="none" stroke="#E0303F" stroke-width="1.5"/>
+              </g>
+              <!-- 出事：右邊封條被撕開，紅色印記也斷成兩半 -->
+              <g data-show="seal-broken">
+                <polygon points="222,328 232,328 232,344 229,341 226,346 222,343" fill="#FFFFFF" stroke-width="1.5"/>
+                <path d="M224 343 V344 H230 V342" fill="none" stroke="#E0303F" stroke-width="1.5"/>
+                <g transform="rotate(22 222 352)">
+                  <polygon points="222,352 225,349 228,353 232,350 232,372 222,372" fill="#FFFFFF" stroke-width="1.5"/>
+                  <path d="M224 353 V356 H230 V352" fill="none" stroke="#E0303F" stroke-width="1.5"/>
+                </g>
+              </g>
+              <!-- 陷阱：把空票匭的開口轉向參觀席（也就是朝向玩家），讓大家看到裡面空了 -->
+              <g data-show="show-empty">
+                <!-- 兔子站在票匭後面，幫忙把箱子抬起來（只露出頭和耳朵；原本位置的兔子會先藏起來） -->
+                <ellipse cx="183" cy="236" rx="7" ry="18" fill="#FBF7FF" transform="rotate(-10 183 236)"/>
+                <ellipse cx="207" cy="236" rx="7" ry="18" fill="#FBF7FF" transform="rotate(10 207 236)"/>
+                <ellipse cx="183" cy="238" rx="3" ry="11" fill="#FFC4D3" stroke="none" transform="rotate(-10 183 238)"/>
+                <ellipse cx="207" cy="238" rx="3" ry="11" fill="#FFC4D3" stroke="none" transform="rotate(10 207 238)"/>
+                <circle cx="195" cy="272" r="24" fill="#FBF7FF"/>
+                <circle cx="187" cy="266" r="3" fill="#4A3B52" stroke="none"/>
+                <circle cx="203" cy="266" r="3" fill="#4A3B52" stroke="none"/>
+                <path d="M192 272 h6 l-3 3 z" fill="#FF9DB5" stroke="none"/>
+                <circle cx="180" cy="275" r="3.5" fill="#FFC4D3" stroke="none"/>
+                <circle cx="210" cy="275" r="3.5" fill="#FFC4D3" stroke="none"/>
+                <!-- 箱子翻過來後，原本的正面變成上方露出的一小條 -->
+                <rect x="156" y="286" width="78" height="9" rx="2" fill="#DADDE3" stroke-width="2"/>
+                <rect x="180" y="288" width="30" height="5" rx="1" fill="#F9B8CF" stroke-width="1.2"/>
+                <!-- 開口朝前：外框 -->
+                <rect x="152" y="294" width="86" height="76" rx="3" fill="#ECEEF2"/>
+                <!-- 箱子裡面：四面內壁＋最深處，空空的 -->
+                <polygon points="160,302 230,302 218,314 172,314" fill="#B9BFCA" stroke-width="1.5"/>
+                <polygon points="160,302 172,314 172,350 160,362" fill="#D0D4DC" stroke-width="1.5"/>
+                <polygon points="230,302 230,362 218,350 218,314" fill="#D0D4DC" stroke-width="1.5"/>
+                <polygon points="160,362 172,350 218,350 230,362" fill="#E3E6EB" stroke-width="1.5"/>
+                <rect x="172" y="314" width="46" height="36" fill="#C4C9D2" stroke-width="1.5"/>
+                <!-- 兔子從後面抓著箱子兩邊的手 -->
+                <ellipse cx="150" cy="334" rx="8" ry="10" fill="#FBF7FF"/>
+                <ellipse cx="240" cy="334" rx="8" ry="10" fill="#FBF7FF"/>
+                <!-- 拿下來的蓋子 -->
+                <rect x="246" y="366" width="40" height="9" rx="3" fill="#DADDE3"/>
+                <!-- 轉向前方的動態線 -->
+                <path d="M138 300 q-8 10 -2 22 M252 300 q9 8 6 20" fill="none" stroke-width="2.5"/>
+              </g>
+            </g>
+            <rect class="hit" x="146" y="292" width="98" height="86"/>
+          </g>
+
+          <!-- ========== 整票區：整票桌＋三疊票＋廢票堆 ========== -->
+          <g id="piles" class="obj">
+            <g class="wob">
+              <rect x="92" y="520" width="292" height="12" rx="4" fill="#F5D2A8"/>
+              <rect x="98" y="532" width="280" height="26" fill="#EDBE8E"/>
+              <!-- 每疊票的高度由程式調整 -->
+              <rect id="pile-0" x="102" y="516" width="46" height="4" fill="url(#paper-lines)" stroke-width="2.5"/>
+              <rect id="pile-1" x="167" y="516" width="46" height="4" fill="url(#paper-lines)" stroke-width="2.5"/>
+              <rect id="pile-2" x="232" y="516" width="46" height="4" fill="url(#paper-lines)" stroke-width="2.5"/>
+              <rect id="pile-invalid" x="317" y="506" width="46" height="14" fill="url(#paper-lines)" stroke-width="2.5"/>
+              <!-- 每疊最上面那張票（看得到投給誰，emoji 跟上方的愛心差不多大），位置由程式調整 -->
+              <g id="pile-top-0" style="display:none">
+                <rect x="-21" y="-32" width="42" height="32" rx="3" fill="#F9B8CF" stroke-width="2"/>
+                <text id="pile-top-emoji-0" x="0" y="-8" class="pile-top-text">🐱</text>
+              </g>
+              <g id="pile-top-1" style="display:none">
+                <rect x="-21" y="-32" width="42" height="32" rx="3" fill="#F9B8CF" stroke-width="2"/>
+                <text id="pile-top-emoji-1" x="0" y="-8" class="pile-top-text">🐶</text>
+              </g>
+              <g id="pile-top-2" style="display:none">
+                <rect x="-21" y="-32" width="42" height="32" rx="3" fill="#F9B8CF" stroke-width="2"/>
+                <text id="pile-top-emoji-2" x="0" y="-8" class="pile-top-text">🦜</text>
+              </g>
+              <text id="pile-label-0" x="125" y="550" class="pile-text">1</text>
+              <text id="pile-label-1" x="190" y="550" class="pile-text">2</text>
+              <text id="pile-label-2" x="255" y="550" class="pile-text">3</text>
+              <text x="340" y="550" class="pile-text">廢票</text>
+            </g>
+            <rect class="hit" x="92" y="440" width="292" height="120"/>
+          </g>
+
+          <!-- ========== 整票員：松鼠 ========== -->
+          <g id="squirrel" class="obj">
+            <g class="wob">
+              <!-- squirrel-hop：放票時跳一下（程式控制） -->
+              <g id="squirrel-hop">
+                <g class="bob">
+                  <ellipse cx="32" cy="488" rx="16" ry="36" fill="#D98A4E" transform="rotate(-12 32 488)"/>
+                  <ellipse cx="60" cy="512" rx="20" ry="26" fill="#E8A36B"/>
+                  <ellipse cx="62" cy="518" rx="11" ry="15" fill="#F8DDC0" stroke="none"/>
+                  <polygon points="46,462 47,444 58,456" fill="#E8A36B"/>
+                  <polygon points="74,462 73,444 62,456" fill="#E8A36B"/>
+                  <circle cx="60" cy="472" r="18" fill="#E8A36B"/>
+                  <g class="eyes">
+                    <circle cx="53" cy="469" r="3" fill="#4A3B52" stroke="none"/>
+                    <circle cx="67" cy="469" r="3" fill="#4A3B52" stroke="none"/>
+                  </g>
+                  <circle cx="60" cy="477" r="2.5" fill="#4A3B52" stroke="none"/>
+                  <circle cx="48" cy="478" r="3.5" fill="#FFB3C7" stroke="none"/>
+                  <circle cx="72" cy="478" r="3.5" fill="#FFB3C7" stroke="none"/>
+                  <ellipse cx="76" cy="502" rx="7" ry="6" fill="#E8A36B"/>
+                  <ellipse cx="50" cy="538" rx="8" ry="4" fill="#E8A36B"/>
+                  <ellipse cx="70" cy="538" rx="8" ry="4" fill="#E8A36B"/>
+                </g>
+              </g>
+              <rect x="26" y="546" width="60" height="16" rx="4" fill="#FFFFFF" stroke-width="2.5"/>
+              <text x="56" y="558" class="placard-text">整票員</text>
+            </g>
+            <rect class="hit" x="8" y="436" width="82" height="128"/>
+          </g>
+
+          <!-- ========== 參觀席的牌子＋盆栽（裝飾） ========== -->
+          <g id="deco">
+            <rect x="14" y="588" width="70" height="20" rx="5" fill="#FFFFFF" stroke-width="2.5"/>
+            <text x="49" y="602" class="placard-text">▼ 參觀席</text>
+            <rect x="182" y="594" width="30" height="22" rx="4" fill="#FFCFA8"/>
+            <ellipse cx="190" cy="582" rx="8" ry="14" fill="#A8E6CF" transform="rotate(-20 190 582)"/>
+            <ellipse cx="204" cy="582" rx="8" ry="14" fill="#A8E6CF" transform="rotate(20 204 582)"/>
+            <ellipse cx="197" cy="576" rx="7" ry="15" fill="#BDEBD5"/>
+          </g>
+
+          <!-- ========== 角落（平常沒東西；出事時浣熊躲在這裡偷蓋章） ========== -->
+          <g id="corner" class="obj">
+            <g class="wob">
+              <g data-show="secret-stamp">
+                <!-- 地上被偷蓋的票 -->
+                <rect x="140" y="603" width="34" height="20" rx="2" fill="#F9B8CF" stroke-width="2.5" transform="rotate(-6 157 613)"/>
+                <g transform="translate(163, 613)">
+                  <circle r="5.5" fill="none" stroke="#E0303F" stroke-width="1.6"/>
+                  <path d="M0 -5.5 V5.5 M0 0.3 L-3.9 3.9" fill="none" stroke="#E0303F" stroke-width="1.6" stroke-linecap="butt"/>
+                </g>
+                <g class="bob">
+                  <ellipse cx="98" cy="604" rx="8" ry="18" fill="#B4B4C6" transform="rotate(-35 98 604)"/>
+                  <path d="M90 600 l11 -6 M94 611 l11 -6" fill="none" stroke-width="4"/>
+                  <ellipse cx="118" cy="608" rx="17" ry="13" fill="#B4B4C6"/>
+                  <circle cx="104" cy="574" r="6" fill="#B4B4C6"/>
+                  <circle cx="128" cy="574" r="6" fill="#B4B4C6"/>
+                  <circle cx="116" cy="588" r="17" fill="#B4B4C6"/>
+                  <!-- 眼罩 -->
+                  <rect x="99" y="581" width="34" height="11" rx="5.5" fill="#4A3B52"/>
+                  <g class="eyes">
+                    <circle cx="110" cy="586" r="3.5" fill="#FFFFFF" stroke="none"/>
+                    <circle cx="123" cy="586" r="3.5" fill="#FFFFFF" stroke="none"/>
+                    <circle cx="111" cy="586" r="1.6" fill="#4A3B52" stroke="none"/>
+                    <circle cx="124" cy="586" r="1.6" fill="#4A3B52" stroke="none"/>
+                  </g>
+                  <ellipse cx="116" cy="598" rx="7" ry="5" fill="#EDEDF5"/>
+                  <circle cx="116" cy="595" r="2" fill="#4A3B52" stroke="none"/>
+                  <!-- 手上拿著圈選章 -->
+                  <rect x="140" y="580" width="9" height="16" rx="3" fill="#F7A65B"/>
+                  <rect x="137" y="595" width="15" height="6" rx="2" fill="#4A3B52"/>
+                  <circle cx="137" cy="599" r="5.5" fill="#B4B4C6"/>
+                </g>
+              </g>
+            </g>
+            <!-- 只有出事時才點得到 -->
+            <g data-show="secret-stamp">
+              <rect class="hit" x="86" y="556" width="92" height="70"/>
+            </g>
+          </g>
+
+          <!-- ========== 用餘票袋（浣熊也算在這裡） ========== -->
+          <g id="spare" class="obj">
+            <g class="wob">
+              <!-- 出事時才出現：浣熊的尾巴（畫在袋子後面） -->
+              <g data-show="steal">
+                <ellipse cx="376" cy="598" rx="9" ry="20" fill="#B4B4C6" transform="rotate(15 376 598)"/>
+                <path d="M368 588 l14 -3 M367 600 l15 -2" fill="none" stroke="#4A3B52" stroke-width="4"/>
+              </g>
+              <rect x="236" y="566" width="72" height="48" rx="6" fill="#E2BC8B"/>
+              <text x="272" y="604" class="bag-text">用餘票</text>
+              <!-- 正常：封條完整 -->
+              <g data-show="normal">
+                <rect x="232" y="570" width="80" height="14" rx="2" fill="#FFE68A"/>
+                <text x="272" y="581" class="tape-text">已包封</text>
+              </g>
+              <!-- 出事：封條被撕開、空白票被抽出來、浣熊（戴眼罩）出現 -->
+              <g data-show="steal">
+                <polygon points="232,570 258,570 252,577 260,584 232,584" fill="#FFE68A"/>
+                <polygon points="288,566 312,569 311,583 290,580 295,573" fill="#FFE68A"/>
+                <rect x="262" y="546" width="22" height="28" rx="2" fill="#F9B8CF" transform="rotate(10 273 560)"/>
+                <g class="bob">
+                  <circle cx="328" cy="568" r="7" fill="#B4B4C6"/>
+                  <circle cx="360" cy="568" r="7" fill="#B4B4C6"/>
+                  <circle cx="344" cy="586" r="22" fill="#B4B4C6"/>
+                  <rect x="321" y="577" width="46" height="14" rx="7" fill="#4A3B52"/>
+                  <g class="eyes">
+                    <circle cx="335" cy="584" r="4.5" fill="#FFFFFF" stroke="none"/>
+                    <circle cx="353" cy="584" r="4.5" fill="#FFFFFF" stroke="none"/>
+                    <circle cx="336" cy="584" r="2" fill="#4A3B52" stroke="none"/>
+                    <circle cx="354" cy="584" r="2" fill="#4A3B52" stroke="none"/>
+                  </g>
+                  <ellipse cx="344" cy="598" rx="9" ry="6" fill="#EDEDF5"/>
+                  <circle cx="344" cy="595" r="2.5" fill="#4A3B52" stroke="none"/>
+                  <path d="M339 601 q5 3 10 -1" fill="none" stroke-width="2"/>
+                  <rect x="310" y="592" width="16" height="22" rx="2" fill="#F9B8CF" transform="rotate(-15 318 603)"/>
+                  <circle cx="322" cy="608" r="6" fill="#B4B4C6"/>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="226" y="544" width="162" height="74"/>
+          </g>
+
+          <!-- ========== 隔離欄（參觀席不能越過） ========== -->
+          <g id="barrier">
+            <path d="M8 630 Q71 646 134 630 Q195 646 256 630 Q319 646 382 630" fill="none" stroke="#4A3B52" stroke-width="9"/>
+            <path d="M8 630 Q71 646 134 630 Q195 646 256 630 Q319 646 382 630" fill="none" stroke="#FFB3C7" stroke-width="4"/>
+            <rect x="2" y="618" width="12" height="38" rx="5" fill="#A8E6CF"/>
+            <rect x="128" y="618" width="12" height="38" rx="5" fill="#FFE68A"/>
+            <rect x="250" y="618" width="12" height="38" rx="5" fill="#A7D8F0"/>
+            <rect x="376" y="618" width="12" height="38" rx="5" fill="#CDB4F0"/>
+          </g>
+
+          <!-- ========== 參觀民眾（從背後看） ==========
+               normal  = 安靜看開票
+               filming = 舉手機錄影（陷阱：這是合法的！）
+               flash   = 開閃光燈拍照（違規）：閃光放大，整個畫面也會跟著閃（#flash-overlay） -->
+          <!-- 民眾 1：無尾熊 -->
+          <g id="aud-1" class="obj">
+            <g class="wob">
+              <g class="bob">
+                <ellipse cx="40" cy="730" rx="38" ry="20" fill="#FFCFA8"/>
+                <g data-show="filming flash">
+                  <path d="M70 730 L62 684" fill="none" stroke="#4A3B52" stroke-width="14"/>
+                  <path d="M70 730 L62 684" fill="none" stroke="#FFCFA8" stroke-width="8"/>
+                </g>
+                <circle cx="16" cy="688" r="13" fill="#B8BCCB"/>
+                <circle cx="64" cy="688" r="13" fill="#B8BCCB"/>
+                <circle cx="16" cy="688" r="6" fill="#E8EAF1" stroke="none"/>
+                <circle cx="64" cy="688" r="6" fill="#E8EAF1" stroke="none"/>
+                <circle cx="40" cy="706" r="26" fill="#B8BCCB"/>
+                <g data-show="flash">
+                  <polygon points="60,614 57,625 48,619 54,628 43,631 54,634 48,643 57,637 60,648 63,637 72,643 66,634 77,631 66,628 72,619 63,625" fill="#FFF6B0" stroke-width="2.5" transform="translate(60 631) scale(1.9) translate(-60 -631)"/>
+                </g>
+                <g data-show="filming flash">
+                  <rect x="46" y="636" width="28" height="42" rx="5" fill="#4A3B52"/>
+                  <rect x="49" y="640" width="22" height="32" rx="2" fill="#CDEBFF" stroke="none"/>
+                  <circle cx="60" cy="662" r="6" fill="#C8A27A" stroke-width="1.5"/>
+                  <circle cx="62" cy="680" r="6" fill="#B8BCCB"/>
+                </g>
+                <g data-show="filming">
+                  <circle cx="53" cy="645" r="2.5" fill="#E0567A" stroke="none"/>
+                  <text x="63" y="648" class="rec-text">REC</text>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="2" y="634" width="76" height="86"/>
+          </g>
+
+          <!-- 民眾 2：小豬 -->
+          <g id="aud-2" class="obj">
+            <g class="wob">
+              <g class="bob">
+                <ellipse cx="117" cy="730" rx="38" ry="20" fill="#A7D8F0"/>
+                <g data-show="filming flash">
+                  <path d="M147 730 L139 684" fill="none" stroke="#4A3B52" stroke-width="14"/>
+                  <path d="M147 730 L139 684" fill="none" stroke="#A7D8F0" stroke-width="8"/>
+                </g>
+                <polygon points="96,694 97,670 112,684" fill="#FFC4D3"/>
+                <polygon points="138,694 137,670 122,684" fill="#FFC4D3"/>
+                <circle cx="117" cy="706" r="26" fill="#FFC4D3"/>
+                <g data-show="flash">
+                  <polygon points="137,614 134,625 125,619 131,628 120,631 131,634 125,643 134,637 137,648 140,637 149,643 143,634 154,631 143,628 149,619 140,625" fill="#FFF6B0" stroke-width="2.5" transform="translate(137 631) scale(1.9) translate(-137 -631)"/>
+                </g>
+                <g data-show="filming flash">
+                  <rect x="123" y="636" width="28" height="42" rx="5" fill="#4A3B52"/>
+                  <rect x="126" y="640" width="22" height="32" rx="2" fill="#CDEBFF" stroke="none"/>
+                  <circle cx="137" cy="662" r="6" fill="#C8A27A" stroke-width="1.5"/>
+                  <circle cx="139" cy="680" r="6" fill="#FFC4D3"/>
+                </g>
+                <g data-show="filming">
+                  <circle cx="130" cy="645" r="2.5" fill="#E0567A" stroke="none"/>
+                  <text x="140" y="648" class="rec-text">REC</text>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="79" y="634" width="76" height="86"/>
+          </g>
+
+          <!-- 民眾 3：綿羊 -->
+          <g id="aud-3" class="obj">
+            <g class="wob">
+              <g class="bob">
+                <ellipse cx="195" cy="730" rx="38" ry="20" fill="#CDB4F0"/>
+                <g data-show="filming flash">
+                  <path d="M225 730 L217 684" fill="none" stroke="#4A3B52" stroke-width="14"/>
+                  <path d="M225 730 L217 684" fill="none" stroke="#CDB4F0" stroke-width="8"/>
+                </g>
+                <ellipse cx="168" cy="704" rx="10" ry="5" fill="#F2DFC8"/>
+                <ellipse cx="222" cy="704" rx="10" ry="5" fill="#F2DFC8"/>
+                <circle cx="195" cy="706" r="25" fill="#FFF8EE"/>
+                <circle cx="181" cy="688" r="10" fill="#FFFFFF"/>
+                <circle cx="209" cy="688" r="10" fill="#FFFFFF"/>
+                <circle cx="195" cy="683" r="11" fill="#FFFFFF"/>
+                <g data-show="flash">
+                  <polygon points="215,614 212,625 203,619 209,628 198,631 209,634 203,643 212,637 215,648 218,637 227,643 221,634 232,631 221,628 227,619 218,625" fill="#FFF6B0" stroke-width="2.5" transform="translate(215 631) scale(1.9) translate(-215 -631)"/>
+                </g>
+                <g data-show="filming flash">
+                  <rect x="201" y="636" width="28" height="42" rx="5" fill="#4A3B52"/>
+                  <rect x="204" y="640" width="22" height="32" rx="2" fill="#CDEBFF" stroke="none"/>
+                  <circle cx="215" cy="662" r="6" fill="#C8A27A" stroke-width="1.5"/>
+                  <circle cx="217" cy="680" r="6" fill="#FFF8EE"/>
+                </g>
+                <g data-show="filming">
+                  <circle cx="208" cy="645" r="2.5" fill="#E0567A" stroke="none"/>
+                  <text x="218" y="648" class="rec-text">REC</text>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="157" y="634" width="76" height="86"/>
+          </g>
+
+          <!-- 民眾 4：倉鼠 -->
+          <g id="aud-4" class="obj">
+            <g class="wob">
+              <g class="bob">
+                <ellipse cx="273" cy="730" rx="38" ry="20" fill="#A8E6CF"/>
+                <g data-show="filming flash">
+                  <path d="M303 730 L295 684" fill="none" stroke="#4A3B52" stroke-width="14"/>
+                  <path d="M303 730 L295 684" fill="none" stroke="#A8E6CF" stroke-width="8"/>
+                </g>
+                <circle cx="256" cy="686" r="8" fill="#FFD7A8"/>
+                <circle cx="290" cy="686" r="8" fill="#FFD7A8"/>
+                <circle cx="256" cy="686" r="4" fill="#FFC4D3" stroke="none"/>
+                <circle cx="290" cy="686" r="4" fill="#FFC4D3" stroke="none"/>
+                <circle cx="273" cy="706" r="26" fill="#FFD7A8"/>
+                <g data-show="flash">
+                  <polygon points="293,614 290,625 281,619 287,628 276,631 287,634 281,643 290,637 293,648 296,637 305,643 299,634 310,631 299,628 305,619 296,625" fill="#FFF6B0" stroke-width="2.5" transform="translate(293 631) scale(1.9) translate(-293 -631)"/>
+                </g>
+                <g data-show="filming flash">
+                  <rect x="279" y="636" width="28" height="42" rx="5" fill="#4A3B52"/>
+                  <rect x="282" y="640" width="22" height="32" rx="2" fill="#CDEBFF" stroke="none"/>
+                  <circle cx="293" cy="662" r="6" fill="#C8A27A" stroke-width="1.5"/>
+                  <circle cx="295" cy="680" r="6" fill="#FFD7A8"/>
+                </g>
+                <g data-show="filming">
+                  <circle cx="286" cy="645" r="2.5" fill="#E0567A" stroke="none"/>
+                  <text x="296" y="648" class="rec-text">REC</text>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="235" y="634" width="76" height="86"/>
+          </g>
+
+          <!-- 民眾 5：小鹿（手機舉在左邊，免得超出畫面） -->
+          <g id="aud-5" class="obj">
+            <g class="wob">
+              <g class="bob">
+                <ellipse cx="350" cy="730" rx="38" ry="20" fill="#FFE68A"/>
+                <g data-show="filming flash">
+                  <path d="M320 730 L328 684" fill="none" stroke="#4A3B52" stroke-width="14"/>
+                  <path d="M320 730 L328 684" fill="none" stroke="#FFE68A" stroke-width="8"/>
+                </g>
+                <path d="M340 684 l-6 -16 m3 8 l-8 -3 M360 684 l6 -16 m-3 8 l8 -3" fill="none" stroke="#9C6B3F" stroke-width="4"/>
+                <ellipse cx="326" cy="694" rx="10" ry="6" fill="#E3B57E" transform="rotate(-20 326 694)"/>
+                <ellipse cx="374" cy="694" rx="10" ry="6" fill="#E3B57E" transform="rotate(20 374 694)"/>
+                <circle cx="350" cy="706" r="26" fill="#E3B57E"/>
+                <g data-show="flash">
+                  <polygon points="328,614 325,625 316,619 322,628 311,631 322,634 316,643 325,637 328,648 331,637 340,643 334,634 345,631 334,628 340,619 331,625" fill="#FFF6B0" stroke-width="2.5" transform="translate(328 631) scale(1.9) translate(-328 -631)"/>
+                </g>
+                <g data-show="filming flash">
+                  <rect x="314" y="636" width="28" height="42" rx="5" fill="#4A3B52"/>
+                  <rect x="317" y="640" width="22" height="32" rx="2" fill="#CDEBFF" stroke="none"/>
+                  <circle cx="328" cy="662" r="6" fill="#C8A27A" stroke-width="1.5"/>
+                  <circle cx="328" cy="680" r="6" fill="#E3B57E"/>
+                </g>
+                <g data-show="filming">
+                  <circle cx="321" cy="645" r="2.5" fill="#E0567A" stroke="none"/>
+                  <text x="331" y="648" class="rec-text">REC</text>
+                </g>
+              </g>
+            </g>
+            <rect class="hit" x="312" y="634" width="76" height="86"/>
+          </g>
+
+          <!-- ========== 停電時靠近票匭的黑影（平常沒東西） ========== -->
+          <g id="shadow" class="obj">
+            <!-- 停電：整個畫面變暗（點擊會穿過去）。sneak-hint 是剛停電、黑影還沒出現的時候 -->
+            <g data-show="sneak-hint sneak" pointer-events="none">
+              <rect x="-10" y="-10" width="410" height="740" fill="#1B1628" opacity="0.72" stroke="none"/>
+            </g>
+            <g class="wob">
+              <g data-show="sneak">
+                <path d="M246 332 Q232 328 224 318" fill="none" stroke="#8C84A6" stroke-width="12"/>
+                <path d="M246 332 Q232 328 224 318" fill="none" stroke="#0F0C17" stroke-width="7"/>
+                <path d="M238 374 C238 330 246 304 264 300 C282 304 290 330 290 374 Z" fill="#0F0C17" stroke="#8C84A6" stroke-width="2.5"/>
+                <circle cx="264" cy="288" r="18" fill="#0F0C17" stroke="#8C84A6" stroke-width="2.5"/>
+                <g class="eyes">
+                  <ellipse cx="257" cy="287" rx="3.5" ry="2.5" fill="#FFF3A6" stroke="none"/>
+                  <ellipse cx="271" cy="287" rx="3.5" ry="2.5" fill="#FFF3A6" stroke="none"/>
+                </g>
+              </g>
+            </g>
+            <!-- 只有出事時才點得到 -->
+            <g data-show="sneak">
+              <rect class="hit" x="220" y="262" width="78" height="118"/>
+            </g>
+          </g>
+
+          <!-- ========== 閃光燈：整個畫面一閃一閃（.scene-wrap.flashing 時才有動畫，點不到） ========== -->
+          <rect id="flash-overlay" x="-10" y="-10" width="410" height="740" fill="#FFFFFF" opacity="0" stroke="none" pointer-events="none"/>
+
+          <!-- ========== 記票員覆誦的對話框（程式控制顯示和文字，點不到） ========== -->
+          <g id="owl-bubble" pointer-events="none" style="display:none">
+            <polygon points="356,234 344,246 364,246" fill="#FFFFFF"/>
+            <rect x="214" y="242" width="170" height="30" rx="14" fill="#FFFFFF"/>
+            <text id="owl-bubble-text" x="299" y="262" class="bubble-text"></text>
+          </g>
+
+          <!-- ========== 傳遞中的選票（背景動畫用，點不到） ========== -->
+          <g id="flyer" pointer-events="none" style="display:none">
+            <rect x="-14" y="-10" width="28" height="20" rx="2" fill="#F9B8CF" stroke-width="2.5"/>
+            <path d="M-5 -7 V7 M4 -7 V7" fill="none" stroke="#D86F95" stroke-width="1.5"/>
+          </g>
+
+          <!-- ========== 特效層（飄字） ========== -->
+          <g id="fx" pointer-events="none"></g>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ===================================================
+       畫面三：結束頁
+       =================================================== -->
+  <section id="screen-end" class="screen scroll" hidden>
+    <div class="end-inner">
+      <h1 class="end-title">開票結束！</h1>
+      <div class="stats">
+        <div class="stat"><small>分數</small><b id="end-score">0</b></div>
+        <div class="stat"><small>平均反應</small><b id="end-avg">—</b></div>
+        <div class="stat"><small>最快一次</small><b id="end-fast">—</b></div>
+        <div class="stat"><small>最高連擊</small><b id="end-combo">0</b></div>
+      </div>
+      <p id="end-time" class="end-time"></p>
+      <p id="end-check" class="end-time"></p>
+
+      <h2 class="section-title">沒提醒到的事</h2>
+      <div id="end-missed"></div>
+
+      <div id="end-traps-block">
+        <h2 class="section-title">其實沒問題的事</h2>
+        <div id="end-traps"></div>
+      </div>
+
+      <!-- 監票呼籲（固定文案） -->
+      <section class="callout">
+        <h2>投票日，一起去看開票！</h2>
+        <p>開票所是公開的，投票結束後任何人都能進去看，也可以錄影（不開閃光燈、不越過參觀席）。</p>
+        <p>工作人員都很辛苦認真。發現問題時，請舉手好好地向主任監察員反映，不要自己動手。</p>
+        <h3>想知道更多</h3>
+        <ul class="ref-links">
+          <li>想看正式的完整教學：<a href="https://youtu.be/NZgwPHcZwV4?t=1550" target="_blank" rel="noopener">中選會的精美教學<span class="nowrap">動畫<svg class="ext-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2h5v5M14 2L7 9M12 10v4H2V4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr-only">（另開新分頁）</span></span></a></li>
+          <li>進階版測驗：<a href="https://training-quiz.cec.gov.tw/#/" target="_blank" rel="noopener">中選會<span class="nowrap">測驗<svg class="ext-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2h5v5M14 2L7 9M12 10v4H2V4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr-only">（另開新分頁）</span></span></a></li>
+          <li>網友 hsiaoshihyuan 自製：<a href="https://www.youtube.com/watch?v=n4FgXvhQ64E" target="_blank" rel="noopener">監票教學<span class="nowrap">動畫<svg class="ext-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2h5v5M14 2L7 9M12 10v4H2V4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr-only">（另開新分頁）</span></span></a></li>
+        </ul>
+      </section>
+
+      <div class="end-buttons">
+        <button id="btn-again" class="btn btn-main" type="button">再玩一次</button>
+        <button id="btn-home" class="btn btn-sub" type="button">回首頁</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 開票結束：核對貼在門口的投開票報告表 -->
+  <div id="check" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="check-title">
+      <h2 id="check-title">投開票報告表</h2>
+      <p>報告表貼在門口了，一起核對看看！</p>
+      <table class="check-table">
+        <tbody id="check-rows"></tbody>
+      </table>
+      <p class="check-voters">開場宣布的領票人數：<b id="check-voters">0</b> 人</p>
+
+      <!-- 第一步：玩家判斷 -->
+      <div id="check-ask">
+        <p class="check-question">全部加起來，等於領票人數嗎？</p>
+        <div class="check-buttons">
+          <button id="check-ok" class="btn btn-sub" type="button">對得起來</button>
+          <button id="check-wrong" class="btn btn-sub" type="button">對不起來</button>
+        </div>
+      </div>
+
+      <!-- 第二步：告訴玩家答案 -->
+      <div id="check-answer" hidden>
+        <p id="check-verdict" class="check-verdict"></p>
+        <p id="check-math" class="check-math"></p>
+        <p id="check-card"></p>
+        <p id="check-basis" class="basis"></p>
+        <button id="check-next" class="btn btn-main" type="button">看結果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示視窗（點到其實沒問題的事、暫停） -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title"></h2>
+      <p id="modal-body"></p>
+      <p id="modal-basis" class="basis"></p>
+      <button id="modal-btn" class="btn btn-main" type="button"></button>
+    </div>
+  </div>
+
+</div>
+
+<!-- 程式（順序很重要：後面的檔案會用到前面檔案的東西） -->
+<script src="js/config.js"></script>
+<script src="js/events.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

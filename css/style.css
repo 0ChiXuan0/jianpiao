@@ -1,0 +1,862 @@
+/* =============================================
+   style.css — 版面與外觀
+   配色：多色糖果色系，不偏向任何單一顏色
+   ============================================= */
+
+:root {
+  --ink: #4A3B52;      /* 外框、文字的深色 */
+  --cream: #FFF6E6;
+  --pink: #FFB3C7;
+  --mint: #A8E6CF;
+  --lemon: #FFE68A;
+  --sky: #A7D8F0;
+  --lavender: #CDB4F0;
+  --peach: #FFCFA8;
+  --bad: #B8325A;      /* 扣分、漏掉的提示字 */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  /* 電腦上看時，手機畫面外面的背景（單色，不用漸層） */
+  background: #EFE4D2;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  /* 防止雙擊放大 */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 整個遊戲的外框：手機寬度，最寬 430px */
+#app {
+  position: relative;
+  max-width: 430px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+/* ---------- 三個畫面共用 ---------- */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 20px 40px;
+}
+
+/* ---------- 按鈕 ---------- */
+.btn {
+  display: inline-block;
+  min-height: 52px;
+  padding: 12px 32px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 0 4px 0 var(--ink);
+  color: var(--ink);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+}
+
+.btn-main {
+  background: var(--lemon);
+}
+
+.btn-sub {
+  background: #FFFFFF;
+}
+
+.btn-small {
+  min-height: 44px;
+  padding: 8px 18px;
+  font-size: 15px;
+  background: #FFFFFF;
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+/* HUD 上的小圖示按鈕（音效開關） */
+.icon-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--ink);
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- 首頁 ---------- */
+.home-inner {
+  width: 100%;
+  max-width: 360px;
+  margin: auto; /* 內容不多時上下置中，太多時可以捲動 */
+  text-align: center;
+}
+
+
+.title {
+  margin: 0 0 8px;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+/* 首頁的熊（從遊戲裡複製來的，一直重複舉票） */
+.home-bear {
+  width: 112px;
+  height: 172px;
+  margin: 0 auto 6px;
+}
+
+.home-bear-svg {
+  touch-action: auto; /* 手指放在熊上面也能捲動頁面 */
+}
+
+
+.subtitle {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* 條列：整塊置中，每一行的圓點和文字靠左對齊（不然圓點會亂飄） */
+.rules {
+  display: inline-block;
+  margin: 0 0 24px;
+  padding-left: 1.3em;
+  text-align: left;
+}
+
+.rules li {
+  padding: 2px 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.home-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.home-buttons .btn {
+  width: 100%;
+}
+
+/* 資訊層級比較低的文字按鈕（首頁的聲音開關、回首頁） */
+.text-btn {
+  min-height: 44px;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* 連結：底線＋另開分頁的小圖示 */
+a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
+/* 不要在中間換行 */
+.nowrap {
+  white-space: nowrap;
+}
+
+.ext-icon {
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+
+/* 畫面上看不到、但螢幕閱讀器會念的文字 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.note {
+  margin: 20px 0 0;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+/* ---------- 先了解規則 ---------- */
+.rules-inner {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.rules-title {
+  margin: 10px 0 8px;
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.rules-lead {
+  margin: 0 0 14px;
+  font-size: 16px;
+  line-height: 1.6;
+  text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
+}
+
+/* 規則頁的事件截圖（從遊戲場景複製出來的 SVG） */
+.snap {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  margin: 0 0 10px;
+  background: #FFF3DC;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+}
+
+.rules-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.btn-link {
+  text-align: center;
+  text-decoration: none;
+  font-size: 17px;
+}
+
+/* ---------- 遊戲畫面 ---------- */
+.game {
+  background: #FFF3DC;
+  /* 防止長按選取文字、跳出選單 */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.hud {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px;
+  padding-top: max(6px, env(safe-area-inset-top));
+  background: #FFFFFF;
+  border-bottom: 3px solid var(--ink);
+}
+
+.hearts {
+  display: flex;
+  gap: 2px;
+  min-width: 112px;
+}
+
+/* 愛心：剩下的是實心粉紅，扣掉的是空心灰色（形狀不同，不只靠顏色分辨） */
+.heart {
+  width: 21px;
+  height: 21px;
+  fill: #F0607E;
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.heart.lost {
+  fill: none;
+  stroke: #9A8FA0;
+}
+
+.hearts.hurt {
+  animation: hurt 0.4s;
+}
+
+@keyframes hurt {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+.hud-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+  line-height: 1.1;
+}
+
+.hud-box small {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hud-box b {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mul {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scene-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 只用來放共用圖案（defs）的 SVG，不佔版面 */
+.svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 畫面上方的大字公告 */
+.banner {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 92%;
+  padding: 10px 20px 12px;
+  text-align: center;
+  background: #FFFFFF;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 5px 0 var(--ink);
+  pointer-events: none; /* 點擊會穿過去，不擋到場景 */
+  animation: banner-pop 0.25s ease-out;
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner small {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.banner b {
+  display: block;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+@keyframes banner-pop {
+  from { transform: translateX(-50%) scale(0.85); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* 閃光燈：整個畫面閃一下，每 1.4 秒一次（一秒不到一次，不會太刺眼） */
+.scene-wrap.flashing #flash-overlay {
+  animation: camera-flash 1.4s ease-out infinite;
+}
+
+@keyframes camera-flash {
+  0% { opacity: 0.7; }
+  18% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+.scene-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* 遊戲中不要捲動、縮放 */
+}
+
+/* 亂點時畫面輕微晃動 */
+.scene-wrap.shake {
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* ---------- SVG 場景裡的文字 ---------- */
+.scene-svg text {
+  stroke: none;
+  fill: var(--ink);
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.scene-svg .sign-text { font-size: 11px; }
+.scene-svg .placard-text { font-size: 11px; }
+.scene-svg .sheet-head { font-size: 14px; fill: #D93B4E; } /* 計票紙上的紅字（號次、無效） */
+.scene-svg .sheet-emoji { font-size: 22px; } /*                 計票紙上的候選人（跟上方的愛心差不多大） */
+.scene-svg .ballot-num { font-size: 12px; }
+.scene-svg .ballot-emoji { font-size: 18px; } /*   選票上的候選人（原本 15，放大 20%） */
+.scene-svg .bubble-text { font-size: 13px; }
+.scene-svg .box-head { font-size: 8.5px; } /*       票匭上方的粉紅標示 */
+.scene-svg .box-label { font-size: 8px; fill: #FFFFFF; } /* 票匭的「投票匭」字樣 */
+.scene-svg .pile-text { font-size: 14.4px; } /*     整票桌標籤（原本 12，放大 20%） */
+.scene-svg .bag-text { font-size: 12px; }
+.scene-svg .tape-text { font-size: 9px; }
+.scene-svg .rec-text { font-size: 7px; }
+.scene-svg .pile-top-text { font-size: 22px; } /*   票堆最上面那張（跟上方的愛心差不多大） */
+.scene-svg .ballot-seal-text { font-size: 7.5px; fill: #E0303F; } /* 廢票上蓋的個人印章 */
+
+/* 大家停下來的時候（展示空票匭、停電），先把對話框藏起來，免得擋住畫面 */
+.scene-svg.hush #bubble,
+.scene-svg.hush #owl-bubble {
+  display: none;
+}
+
+/* 透明的擴大點擊區 */
+.scene-svg .hit {
+  fill: transparent;
+  stroke: none;
+}
+
+/* 計票紙上的正字（黑色麥克筆） */
+.scene-svg .marker {
+  stroke: #2B2433;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+/* ---------- 動畫 ---------- */
+.scene-svg .wob,
+.scene-svg .bob,
+.scene-svg .ears {
+  transform-box: fill-box;
+  transform-origin: 50% 100%; /* 以底部中間為軸心 */
+}
+
+.scene-svg .eyes {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* 事件快過期前（config.js 的 warnSeconds）才抖：
+   像鬧鐘 snooze 一樣「嗡嗡兩下、停一下」，幅度很小 */
+.scene-svg .obj.warn > .wob {
+  animation: snooze 0.5s ease-in-out infinite;
+}
+
+@keyframes snooze {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-1.5deg); }
+  20% { transform: rotate(1.5deg); }
+  30% { transform: rotate(-1.2deg); }
+  40% { transform: rotate(1.2deg); }
+  50% { transform: rotate(-0.5deg); }
+}
+
+/* 動物平常會輕輕上下動（像在呼吸）。
+   速度和開始時間由 scene.js 隨機設定，每隻都不一樣 */
+.scene-svg .bob {
+  animation: bob var(--breath, 2.4s) ease-in-out var(--breath-delay, 0s) infinite alternate;
+}
+
+@keyframes bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2px); }
+}
+
+/* 動物隨機做的小動作（scene.js 隨機加上 act-xxx class） */
+.scene-svg .obj.act-tilt .bob { animation: act-tilt 0.9s ease-in-out; } /* 歪頭 */
+.scene-svg .obj.act-hop .bob { animation: act-hop 0.45s ease-out; } /*    跳一下 */
+.scene-svg .obj.act-look .bob { animation: act-look 1.2s ease-in-out; } /* 左右張望 */
+.scene-svg .obj.act-blink .eyes { animation: act-blink 0.25s ease-in-out; } /* 眨眼 */
+.scene-svg .obj.act-ear .ears { animation: act-ear 0.5s ease-in-out; } /* 動耳朵 */
+
+@keyframes act-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(-3deg); }
+  70% { transform: rotate(2deg); }
+}
+
+@keyframes act-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+@keyframes act-look {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(-3px); }
+  70% { transform: translateX(3px); }
+}
+
+@keyframes act-blink {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.1); }
+}
+
+@keyframes act-ear {
+  0%, 100% { transform: rotate(0deg); }
+  30% { transform: rotate(-6deg); }
+  70% { transform: rotate(5deg); }
+}
+
+/* 傳遞中的選票 */
+#flyer {
+  transition: transform 0.35s ease-in-out;
+}
+
+/* 飄字（+分數、漏掉了！、-30） */
+.scene-svg .float {
+  font-size: 18px;
+  font-weight: 900;
+  fill: var(--ink);
+  stroke: #FFFFFF;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  animation: float-up 0.9s ease-out forwards;
+}
+
+.scene-svg .float-bad {
+  fill: var(--bad);
+}
+
+@keyframes float-up {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-28px); opacity: 0; }
+}
+
+@keyframes float-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* 使用者在系統設定「減少動態效果」時：不抖動、不晃動 */
+@media (prefers-reduced-motion: reduce) {
+  .scene-svg .bob,
+  .scene-svg .obj.warn > .wob,
+  .scene-svg .obj[class*="act-"] .bob,
+  .scene-svg .obj[class*="act-"] .eyes,
+  .scene-svg .obj[class*="act-"] .ears,
+  .scene-wrap.shake,
+  .hearts.hurt {
+    animation: none;
+  }
+
+  #flyer {
+    transition: none;
+  }
+
+  .scene-svg .float {
+    animation: float-fade 0.9s forwards;
+  }
+
+  /* 不想看到動態效果的人：閃光燈改成畫面淡淡地亮著，不閃 */
+  .scene-wrap.flashing #flash-overlay {
+    animation: none;
+    opacity: 0.25;
+  }
+
+  .banner {
+    animation: none;
+  }
+}
+
+/* ---------- 提示視窗 ---------- */
+.modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(74, 59, 82, 0.45);
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 22px 20px;
+  text-align: center;
+  background: #FFFFFF;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 0 6px 0 var(--ink);
+}
+
+.modal-card h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+.modal-card p {
+  margin: 0 0 10px;
+  font-size: 16px;
+  line-height: 1.6;
+  text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
+}
+
+.modal-card .btn {
+  margin-top: 8px;
+}
+
+/* 提示視窗最下面的主要按鈕：整排寬 */
+#modal-btn,
+#check-next {
+  display: block;
+  width: 100%;
+}
+
+.basis {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.modal-card .basis {
+  font-size: 13px;
+}
+
+/* ---------- 開票結束：核對票數 ---------- */
+.check-table {
+  width: 100%;
+  margin: 0 0 10px;
+  border-collapse: collapse;
+  font-size: 17px;
+}
+
+.check-table td {
+  padding: 5px 8px;
+  border-bottom: 2px dashed #E8DDF0;
+  text-align: left;
+}
+
+.check-table td:last-child {
+  font-weight: 700;
+  text-align: right;
+}
+
+.modal-card .check-voters,
+.modal-card .check-question {
+  font-weight: 700;
+}
+
+.check-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.check-buttons .btn {
+  flex: 1;
+  padding: 12px 8px;
+}
+
+.modal-card .check-verdict {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.modal-card .check-math {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--cream);
+  font-size: 15px;
+}
+
+/* ---------- 結束頁 ---------- */
+.end-inner {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.end-title {
+  margin: 4px 0 16px;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stat {
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.stat small {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stat b {
+  display: block;
+  margin-top: 2px;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat:nth-child(1) { background: var(--lemon); }
+.stat:nth-child(2) { background: var(--mint); }
+.stat:nth-child(3) { background: var(--sky); }
+.stat:nth-child(4) { background: var(--pink); }
+
+.end-time {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+
+.section-title {
+  margin: 28px 0 10px;
+  font-size: 20px;
+}
+
+/* 教學卡 */
+.card {
+  margin: 0 0 28px;
+  text-align: left; /* 教學卡的文字靠左，比較好讀 */
+}
+
+
+
+.card h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+
+.card p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
+}
+
+.card .basis {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.badge {
+  padding: 2px 8px;
+  font-size: 12px;
+  background: var(--peach);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.empty {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* 監票呼籲 */
+.callout {
+  margin: 32px 0 0;
+  padding: 16px 16px 8px;
+  text-align: left; /* 「投票日，一起去看開票！」整塊靠左 */
+  background: var(--lavender);
+  border-radius: 6px;
+}
+
+.callout h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.callout h3 {
+  margin: 16px 0 6px;
+  font-size: 16px;
+}
+
+.ref-links {
+  margin: 0 0 10px;
+  padding-left: 1.2em;
+}
+
+.ref-links li {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.6;
+  text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
+}
+
+.callout p {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.7;
+  text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
+}
+
+.end-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+}
