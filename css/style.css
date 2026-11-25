@@ -450,6 +450,7 @@ a {
 .scene-svg .sheet-emoji { font-size: 22px; } /*                 計票紙上的候選人（跟上方的愛心差不多大） */
 .scene-svg .ballot-num { font-size: 12px; }
 .scene-svg .ballot-emoji { font-size: 18px; } /*   選票上的候選人（原本 15，放大 20%） */
+.scene-svg .copy .ballot-emoji { filter: grayscale(1); } /* 不是選委會發的票：像影印的，候選人是灰的 */
 .scene-svg .bubble-text { font-size: 13px; }
 .scene-svg .box-head { font-size: 8.5px; } /*       票匭上方的粉紅標示 */
 .scene-svg .box-label { font-size: 8px; fill: #FFFFFF; } /* 票匭的「投票匭」字樣 */

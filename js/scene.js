@@ -116,7 +116,7 @@ const Scene = {
     'crossed', //  圈了又塗改
     'marked', //   簽名、蓋自己的章、按指印、畫符號
     'triangle', // 不是用選委會的圈選章（自己畫的三角形）
-    'fake', //     不是選委會發的票（白紙、沒有關防）
+    'fake', //     不是選委會發的票（像影印的：灰色的紙、候選人也是灰的、沒有紅色關防）
     'torn', //     票被撕破，票面不完整
     'smudge', //   票面髒掉，看不出圈給誰
   ],
@@ -566,6 +566,8 @@ const Scene = {
     cycle.ballot = Scene.randomInt(3);
     cycle.invalid = false;
     if (targetId === 'bear') {
+      // 截圖只有一張，用「圈兩人以上」：不用懂規定也看得出是廢票
+      if (timed.visual === 'invalid') timed.kind = 'double';
       Scene.prepareBearBallot(timed);
       Scene.setVariant(el.bear, timed.visual === 'lowered' ? 'chest' : 'raise');
     } else if (timed.visual === 'tally-wrong') {
@@ -587,7 +589,8 @@ const Scene = {
       timed.called = other;
     } else if (timed.visual === 'invalid') {
       // 廢票被當有效票唱：隨機一種廢票，熊照樣唱「某號一票」
-      Scene.drawInvalidBallot(Scene.pick(Scene.INVALID_KINDS), real, other);
+      // 平常隨機挑一種；規則頁的截圖會指定一種一眼就看得出來的（timed.kind）
+      Scene.drawInvalidBallot(timed.kind || Scene.pick(Scene.INVALID_KINDS), real, other);
     } else if (timed.visual === 'line-stamp') {
       // 陷阱：圈在格線上，但看得出投給誰，所以是有效票
       Scene.drawBallot({ stamps: [real], onLine: true });
@@ -665,7 +668,7 @@ const Scene = {
   //   crossed   第一個章印被打叉塗改
   //   triangle  第一個章印換成自己畫的三角形
   //   mark      'sign' 簽名、'seal' 蓋章、'print' 指印、'check' 打勾
-  //   fake      不是選委會發的票（白紙、沒有關防）
+  //   fake      不是選委會發的票（像影印的：灰色的紙、候選人是灰的、沒有紅色關防）
   //   torn      票被撕破（右上角不見了）
   //   smudge    票面髒掉，蓋住第一個章印
   drawBallot(options) {
@@ -698,9 +701,10 @@ const Scene = {
     }
 
     // 不是選委會發的票：白紙、灰色格線、沒有紅色關防
-    el.ballotBg.setAttribute('fill', o.fake ? '#FFFFFF' : '#F9B8CF');
-    el.ballotGrid.setAttribute('stroke', o.fake ? '#A9A9B8' : '#D86F95');
+    el.ballotBg.setAttribute('fill', o.fake ? '#E2E2E8' : '#F9B8CF');
+    el.ballotGrid.setAttribute('stroke', o.fake ? '#8E8E9C' : '#D86F95');
     el.ballotOfficial.style.display = o.fake ? 'none' : '';
+    el.ballotPaper.classList.toggle('copy', !!o.fake); // 候選人的圖也變灰（style.css 的 .copy）
 
     // 撕破：用 mask 切掉右上角，再畫上鋸齒邊
     if (o.torn) el.ballotPaper.setAttribute('mask', 'url(#tear-mask)');
