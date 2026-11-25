@@ -215,6 +215,24 @@ js/ui.js        切換畫面、規則頁、HUD、聲音開關、提示視窗、�
 
 ---
 
+## 5. 網站
+
+- 網址：https://0chixuan0.github.io/jianpiao/
+- 程式碼：https://github.com/0ChiXuan0/jianpiao （GitHub Pages，從 `main` 分支的最上層發布）
+
+改完程式想更新網站，在終端機依序執行：
+
+```bash
+cd ~/Documents/監票遊戲
+git add -A
+git commit -m "說明這次改了什麼"
+git push
+```
+
+push 完大約 1 分鐘，網站就會更新（手機看不到新版的話，重新整理一下）。
+
+---
+
 ## 上線前提醒
 
 - [ ] 教學卡文字要再對照**最新版**的中選會投開票所工作人員手冊和選罷法確認一次（`js/events.js` 的 `card` 和 `basis`）。
