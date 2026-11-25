@@ -105,18 +105,13 @@ const UI = {
     next();
   },
 
-  // 更新聲音按鈕：遊戲中是喇叭圖示（開：有聲波；關：打叉），首頁是文字
+  // 更新聲音按鈕上的圖示和文字（🔊 開、🔇 關）
   refreshSoundButtons() {
     const [hudButton, homeButton] = UI.el.soundButtons;
-    const waves = Sound.on
-      ? '<path d="M15 9 q3 3 0 6 M18 6 q6 6 0 12"/>'
-      : '<path d="M15 9 l6 6 M21 9 l-6 6"/>';
-    hudButton.innerHTML =
-      '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M3 9 h4 l5 -4 v14 l-5 -4 h-4 z" fill="currentColor"/>' + waves + '</svg>';
+    hudButton.textContent = Sound.on ? '🔊' : '🔇';
     hudButton.setAttribute('aria-label', Sound.on ? '聲音：開' : '聲音：關');
-    homeButton.textContent = Sound.on ? '聲音：開' : '聲音：關';
-    // 首頁的箭頭提示：聲音還關著才顯示
+    homeButton.textContent = Sound.on ? '🔊 聲音：開' : '🔇 聲音：關';
+    // 首頁的對話框提示：聲音還關著才顯示
     document.getElementById('sound-hint').hidden = Sound.on;
   },
 

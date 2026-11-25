@@ -9,6 +9,7 @@
 
 const Sound = {
   ctx: null, //  瀏覽器的音訊引擎（第一次按按鈕時才建立）
+  master: null, // 總音量：所有音效和音樂都先接到這裡，再接到喇叭
   on: false, //  聲音（音效＋背景音樂）開或關，預設關
   musicTimer: null, //   排音符用的計時器
   musicStep: 0, //       現在排到旋律的第幾個音
@@ -90,10 +91,16 @@ const Sound = {
 
   // 瀏覽器規定：要使用者按過按鈕後才能發出聲音。所以在按「開始」時呼叫這個
   unlock() {
+    // iPhone 開著靜音模式（側邊的靜音開關）時，網頁的聲音預設會被關掉。
+    // 告訴瀏覽器這是「播放」用的聲音（像音樂 App 一樣），玩家自己打開聲音時就聽得到
+    if (navigator.audioSession) navigator.audioSession.type = 'playback';
+
     if (!Sound.ctx) {
       const AudioEngine = window.AudioContext || window.webkitAudioContext;
       if (!AudioEngine) return; // 很舊的瀏覽器不支援，就安靜地玩
       Sound.ctx = new AudioEngine();
+      Sound.master = Sound.ctx.createGain();
+      Sound.master.connect(Sound.ctx.destination);
     }
     if (Sound.ctx.state === 'suspended') Sound.ctx.resume();
   },
@@ -143,7 +150,7 @@ const Sound = {
 
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(Sound.master);
     source.start(start);
   },
 
@@ -159,12 +166,13 @@ const Sound = {
       69, 72, 77, 76, 74, 72, 74, 76, //   La Do Fa Mi Re Do Re Mi
       79, null, 77, 74, 71, 74, 72, null, // Sol Fa Re Si Re Do
     ],
-    // 每小節的低音（每拍一個音，一小節 4 拍）
+    // 每小節的低音（每拍一個音，一小節 4 拍）。
+    // 手機喇叭放不出太低的音，所以低音不要太低
     bass: [
-      48, 55, 48, 55, // C 和弦
-      45, 52, 45, 52, // Am 和弦
-      41, 48, 41, 48, // F 和弦
-      43, 50, 43, 50, // G 和弦
+      60, 67, 60, 67, // C 和弦
+      57, 64, 57, 64, // Am 和弦
+      53, 60, 53, 60, // F 和弦
+      55, 62, 55, 62, // G 和弦
     ],
   },
 
@@ -193,12 +201,12 @@ const Sound = {
       const at = Sound.musicNext - ctx.currentTime;
       const note = music.melody[step];
       if (note !== null) {
-        Sound.tone({ freq: Sound.midiToFreq(note), at, len: music.beat * 0.9, volume: 0.04 });
+        Sound.tone({ freq: Sound.midiToFreq(note), at, len: music.beat * 0.9, volume: 0.08 });
       }
       // 低音每 2 個八分音符（一拍）響一次
       if (step % 2 === 0) {
         const bass = music.bass[step / 2];
-        Sound.tone({ freq: Sound.midiToFreq(bass), at, len: music.beat * 1.8, type: 'sine', volume: 0.07 });
+        Sound.tone({ freq: Sound.midiToFreq(bass), at, len: music.beat * 1.8, volume: 0.05 });
       }
       Sound.musicNext += music.beat;
       Sound.musicStep = (step + 1) % music.melody.length;
@@ -228,7 +236,7 @@ const Sound = {
     gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(Sound.master);
     osc.start(start);
     osc.stop(end + 0.02);
   },

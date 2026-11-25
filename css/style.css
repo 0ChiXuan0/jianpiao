@@ -112,16 +112,12 @@ body {
   width: 44px;
   height: 44px;
   padding: 0;
+  font-size: 20px;
   color: var(--ink);
   background: #FFFFFF;
   border: 2px solid var(--ink);
   border-radius: 50%;
   cursor: pointer;
-}
-
-.icon-btn svg {
-  width: 24px;
-  height: 24px;
 }
 
 /* ---------- 首頁 ---------- */
@@ -199,39 +195,54 @@ body {
   cursor: pointer;
 }
 
-/* 首頁的聲音開關＋箭頭提示（排成一行） */
+/* 首頁的聲音開關＋下方的對話框提示 */
 .sound-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 8px;
 }
 
+/* 對話框：白底、上面有一個小尖角指著聲音開關。
+   0.5 秒後才彈出來（animation 的 0.5s 是延遲，both 讓它在延遲時先藏著） */
 .sound-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
   margin: 0;
-  font-size: 14px;
+  padding: 7px 14px;
+  font-size: 14px; /* 跟「聲音：關」一樣大 */
   font-weight: 700;
-  color: var(--bad);
+  background: #FFFFFF;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  animation: hint-pop 0.3s ease-out 0.5s both;
 }
 
 .sound-hint[hidden] {
   display: none;
 }
 
-/* 箭頭指著聲音開關，輕輕地左右動，吸引注意 */
-.hint-arrow {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 15px;
-  animation: hint-nudge 1.2s ease-in-out infinite;
+/* 對話框上面的小尖角（一個轉 45 度的小方塊，只畫左上兩條邊） */
+.sound-hint::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  background: #FFFFFF;
+  border-left: 2px solid var(--ink);
+  border-top: 2px solid var(--ink);
+  transform: translateX(-50%) rotate(45deg);
 }
 
-@keyframes hint-nudge {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-5px); }
+@keyframes hint-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hint-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.8); }
+  to { opacity: 1; transform: none; }
 }
 
 /* 連結：底線＋另開分頁的小圖示 */
@@ -646,9 +657,13 @@ a {
     opacity: 0.25;
   }
 
-  .banner,
-  .hint-arrow {
+  .banner {
     animation: none;
+  }
+
+  /* 對話框一樣 0.5 秒後出現，只是不彈跳 */
+  .sound-hint {
+    animation: hint-fade 0.2s linear 0.5s both;
   }
 }
 
