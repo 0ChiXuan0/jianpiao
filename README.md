@@ -17,6 +17,8 @@ js/scene.js     場景外觀、背景開票動畫、開場／結束、大字公�
 js/game.js      遊戲迴圈、產生事件、點擊判定、計分、愛心、報告表票數
 js/ui.js        切換畫面、規則頁、HUD、聲音開關、提示視窗、核對票數、結束頁
 js/track.js     匿名統計（Umami）：記錄事件的小工具
+img/share.png   分享預覽圖（原始檔 share.svg）
+tools/          做圖用的小工具（網站本身用不到）
 ```
 
 ---
@@ -231,6 +233,21 @@ git push
 ```
 
 push 完大約 1 分鐘，網站就會更新（手機看不到新版的話，重新整理一下）。
+
+### 分享預覽（貼連結時顯示的圖和標題）
+
+- 設定在 `index.html` 最上面的 `og:` 那幾行（標題、說明、圖片網址）
+- 圖片是 `img/share.png`（1200×630），原始檔是 `img/share.svg`。改了 SVG 之後，在終端機的遊戲資料夾裡執行：
+
+```bash
+swift tools/render-svg.swift img/share.svg img/share.png 1200 630
+```
+
+```bash
+sips -z 630 1200 img/share.png
+```
+
+- Threads、LINE、FB 會把預覽存起來一段時間，改了圖之後不一定馬上看到新的。FB 可以用 [分享偵錯工具](https://developers.facebook.com/tools/debug/) 要它重新抓
 
 ---
 
