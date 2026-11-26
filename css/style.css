@@ -195,6 +195,11 @@ body {
   cursor: pointer;
 }
 
+/* 首頁的聲音開關：字跟上面的「先了解規則」一樣大 */
+#btn-sound-home {
+  font-size: 20px;
+}
+
 /* 首頁的聲音開關＋下方的對話框提示 */
 .sound-row {
   display: flex;
@@ -209,7 +214,7 @@ body {
   position: relative;
   margin: 0;
   padding: 7px 14px;
-  font-size: 14px; /* 跟「聲音：關」一樣大 */
+  font-size: 20px; /* 跟「聲音：關」一樣大 */
   font-weight: 700;
   background: #FFFFFF;
   border: 2px solid var(--ink);
@@ -657,7 +662,8 @@ a {
     opacity: 0.25;
   }
 
-  .banner {
+  .banner,
+  .callout-art .drift {
     animation: none;
   }
 
@@ -874,6 +880,35 @@ a {
   text-align: left; /* 「投票日，一起去看開票！」整塊靠左 */
   background: var(--lavender);
   border-radius: 6px;
+}
+
+/* 紫色區塊最上面的村民插圖：置中 */
+.callout-art {
+  display: block;
+  width: 250px;
+  max-width: 85%;
+  height: auto;
+  margin: 0 auto 8px;
+}
+
+/* 村民各自上下輕輕漂浮：速度和開始時間都不一樣，看起來才不會整齊劃一 */
+.callout-art .drift {
+  animation: drift 2.4s ease-in-out infinite;
+}
+
+.callout-art .drift-2 {
+  animation-duration: 2s;
+  animation-delay: -0.7s;
+}
+
+.callout-art .drift-3 {
+  animation-duration: 2.8s;
+  animation-delay: -1.4s;
+}
+
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 
 .callout h2 {

@@ -50,26 +50,45 @@ const UI = {
       endTraps: byId('end-traps'),
     };
 
+    // 規則頁最下方也放「投票日，一起去看開票！」紫色區塊：直接複製結果頁那一份，
+    // 這樣文案只要改 index.html 結果頁的那一段，兩頁都會跟著變
+    byId('rules-callout').replaceWith(document.querySelector('#screen-end .callout').cloneNode(true));
+
     UI.el.rulesViolations = byId('rules-violations');
     UI.el.rulesTraps = byId('rules-traps');
     UI.el.soundButtons = [byId('btn-sound'), byId('btn-sound-home')];
 
     // 首頁：直接開始玩，或先了解規則
-    byId('btn-start').addEventListener('click', () => {
-      Sound.unlock(); // 瀏覽器規定要按過按鈕才能有聲音
-      Game.start();
-    });
+    byId('btn-start').addEventListener('click', () => UI.startGame('home'));
     byId('btn-rules').addEventListener('click', () => UI.showRules());
     byId('btn-rules-back').addEventListener('click', () => UI.showScreen('home'));
-    byId('btn-rules-start').addEventListener('click', () => {
-      Sound.unlock();
-      Game.start();
-    });
+    byId('btn-rules-start').addEventListener('click', () => UI.startGame('rules'));
     byId('btn-again').addEventListener('click', () => {
-      Sound.unlock();
-      Game.start();
+      Track.event('play-again');
+      UI.startGame('again');
     });
-    byId('btn-home').addEventListener('click', () => UI.showScreen('home'));
+    byId('btn-home').addEventListener('click', () => {
+      Track.event('go-home');
+      UI.showScreen('home');
+    });
+
+    // 統計：點了哪個外部連結（另開分頁的連結都算），在哪個畫面點的
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[target="_blank"]');
+      if (!link) return;
+      const text = link.textContent.replace('（另開新分頁）', '').trim();
+      Track.event('link-click', { link: text, screen: UI.currentScreen() });
+    });
+
+    // 統計：關掉網頁或切到別的 App 時，記下當時在哪個畫面（遊戲中的話玩到第幾秒）
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) return;
+      const data = { screen: UI.currentScreen() };
+      if (Game.s && Game.s.running && !Game.s.introRunning) {
+        data.seconds = Math.round((Game.now() - Game.s.startedAt) / 1000);
+      }
+      Track.event('leave', data);
+    });
 
     // 核對票數的三個按鈕
     UI.el.checkOk.addEventListener('click', () => UI.answerVoteCheck(false));
@@ -81,9 +100,28 @@ const UI = {
       button.addEventListener('click', () => {
         Sound.toggle();
         UI.refreshSoundButtons();
+        Track.event(Sound.on ? 'sound-on' : 'sound-off', { screen: UI.currentScreen() });
       });
     }
     UI.refreshSoundButtons();
+  },
+
+  // 開始一局。from：從哪裡開始的（'home' 首頁、'rules' 規則頁、'again' 再玩一次），統計用
+  startGame(from) {
+    Sound.unlock(); // 瀏覽器規定要按過按鈕才能有聲音
+    UI.gamesPlayed += 1;
+    Track.event('game-start', { from, game: UI.gamesPlayed });
+    Game.start();
+  },
+
+  gamesPlayed: 0, // 這次打開網頁後玩了幾局（統計用）
+
+  // 現在顯示的是哪個畫面：'home'、'rules'、'game'、'end'（統計用）
+  currentScreen() {
+    for (const name in UI.el.screens) {
+      if (!UI.el.screens[name].hidden) return name;
+    }
+    return 'unknown';
   },
 
   // 首頁的熊：用遊戲裡的熊，一直重複「拿到票 → 舉票」（要在 Scene.setup 之後呼叫）
@@ -147,6 +185,7 @@ const UI = {
 
   // 列出所有事件的教學卡，每張附上遊戲裡的截圖（第一次打開時才做）
   showRules() {
+    Track.event('rules-open');
     const el = UI.el;
     if (el.rulesViolations.children.length === 0) {
       for (const event of EVENTS) {
@@ -284,6 +323,7 @@ const UI = {
 
   // 顯示結束頁
   showEnd(result) {
+    Track.event('end-view');
     const el = UI.el;
     el.endScore.textContent = result.score;
     el.endAvg.textContent = UI.formatSeconds(result.avgReaction);

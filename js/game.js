@@ -45,6 +45,8 @@ const Game = {
       endedAt: 0,
       introRunning: true, // 開場宣布中（這時候不會隨機出事件）
       sealBroken: Math.random() < CONFIG.intro.sealBrokenChance, // 這局開場檢查時，封條是不是破的
+      sealResult: 'ok', // 統計用：封條沒破 'ok'、有提醒到 'reminded'、沒提醒到 'missed'
+      nextMilestone: 0, // 統計用：下一個要記錄的「撐過幾秒」是 PROGRESS_SECONDS 的第幾個
       lastFrame: now,
 
       hearts: CONFIG.maxHearts,
@@ -91,6 +93,7 @@ const Game = {
     if (!s.paused) {
       Scene.update(now - s.lastFrame);
       Game.checkIntro(now);
+      Game.checkProgress(now);
       Game.checkExpired(now);
       if (s.running) Game.trySpawn(now);
     }
@@ -116,6 +119,20 @@ const Game = {
       s.introRunning = false;
       s.startedAt = now;
       s.nextSpawnAt = now + CONFIG.firstEventDelay * 1000;
+      Track.event('seal-check', { result: s.sealResult });
+    }
+  },
+
+  // 統計：撐過這幾秒時各記錄一次
+  PROGRESS_SECONDS: [30, 60, 90, 120, 180],
+
+  checkProgress(now) {
+    const s = Game.s;
+    if (s.introRunning) return;
+    const target = Game.PROGRESS_SECONDS[s.nextMilestone];
+    if (target !== undefined && now - s.startedAt >= target * 1000) {
+      Track.event('game-progress', { seconds: target });
+      s.nextMilestone += 1;
     }
   },
 
@@ -264,6 +281,7 @@ const Game = {
       s.hearts -= 1;
       s.combo = 0;
       Game.record(s.missed, item.event);
+      if (item.event.atStart) s.sealResult = 'missed';
       Scene.floatText(center.x, center.y, '沒注意到⋯', 'bad');
       Sound.play('miss');
       Game.vibrate([60, 40, 60]);
@@ -296,6 +314,7 @@ const Game = {
 
   // 提醒成功
   stopEvent(item, now) {
+    if (item.event.atStart) Game.s.sealResult = 'reminded'; // 統計用
     const s = Game.s;
     const c = CONFIG.score;
 
@@ -393,6 +412,13 @@ const Game = {
     const s = Game.s;
     s.running = false;
     s.endedAt = Game.now();
+    Track.event('game-over', {
+      seconds: Math.round((s.endedAt - s.startedAt) / 1000),
+      score: s.score,
+      maxCombo: s.maxCombo,
+      missed: Object.keys(s.missed).join(',') || 'none', //    沒提醒到的事件 id
+      traps: Object.keys(s.trapsHit).join(',') || 'none', //   點了的陷阱 id
+    });
     Sound.play('gameover');
 
     // 還沒結束的事件都收起來
@@ -458,6 +484,7 @@ const Game = {
     const points = correct ? c.rightBonus : -c.wrongPenalty;
     s.score = Math.max(0, s.score + points);
     s.voteCheck = { correct, points };
+    Track.event('vote-check', { correct, reportWrong: s.voteCount.isWrong });
     Sound.play(correct ? 'stop' : 'trap');
     return s.voteCheck;
   },

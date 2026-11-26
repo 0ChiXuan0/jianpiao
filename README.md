@@ -16,6 +16,7 @@ js/sound.js     音效和背景音樂（用瀏覽器內建功能合成，沒有�
 js/scene.js     場景外觀、背景開票動畫、開場／結束、大字公告、規則頁截圖
 js/game.js      遊戲迴圈、產生事件、點擊判定、計分、愛心、報告表票數
 js/ui.js        切換畫面、規則頁、HUD、聲音開關、提示視窗、核對票數、結束頁
+js/track.js     匿名統計（Umami）：記錄事件的小工具
 ```
 
 ---
@@ -230,6 +231,40 @@ git push
 ```
 
 push 完大約 1 分鐘，網站就會更新（手機看不到新版的話，重新整理一下）。
+
+---
+
+## 6. 統計：多少人玩、玩到哪裡
+
+用 [Umami Cloud](https://cloud.umami.is)（免費方案）做匿名統計：不使用 cookie、不收集姓名或聯絡資料，首頁最下面有一行說明。
+
+- 報表：登入 https://cloud.umami.is 查看
+- 程式：`index.html` 的 `<head>` 有一行 Umami 的程式碼（`data-website-id` 是網站代號，不是密碼，公開沒關係）；`js/track.js` 是記錄事件的小工具
+- 只記錄正式網站（`data-domains`），在自己電腦上測試不會算進去，而是印在瀏覽器的 Console（Chrome 按 `Cmd + Option + J`）
+- 瀏覽器有開「不要追蹤」、或裝了廣告阻擋器的人不會被記錄，所以數字會比實際少一些
+
+記錄的事件：
+
+| 事件 | 什麼時候 | 附帶資料 |
+|---|---|---|
+| （瀏覽，自動） | 打開網站 | 從哪裡點進來、裝置、國家／城市 |
+| `sound-on`／`sound-off` | 按聲音開關 | `screen` 在哪個畫面 |
+| `rules-open` | 進「先了解規則」 | — |
+| `game-start` | 開始一局 | `from`：home／rules／again，`game`：這次打開網頁後的第幾局 |
+| `seal-check` | 開場說完 | `result`：ok 封條沒破／reminded 有提醒到／missed 沒提醒到 |
+| `game-progress` | 撐過 30、60、90、120、180 秒 | `seconds` |
+| `game-over` | 愛心用完 | `seconds`、`score`、`maxCombo`、`missed` 沒提醒到的事件、`traps` 點了的陷阱 |
+| `vote-check` | 核對報告表作答 | `correct` 對不對、`reportWrong` 報告表本身有沒有算錯 |
+| `end-view` | 看到結果頁 | — |
+| `play-again`／`go-home` | 結果頁的按鈕 | — |
+| `link-click` | 點另開分頁的連結 | `link` 連結文字、`screen` |
+| `leave` | 關掉網頁或切到別的 App | `screen`，遊戲中的話還有 `seconds` |
+
+想看「每一步留下幾成人」：在 Umami 的「Reports → Funnel」新增漏斗，依序選 `game-start` → `game-progress` → `game-over` → `vote-check` → `end-view` → `link-click`。
+
+想分開看從哪個管道來：分享時在網址後面加 `?utm_source=line`（或 fb、ig），Umami 的 UTM 報表會分開統計。
+
+想加新的事件：在要記錄的地方加一行 `Track.event('事件名稱', { 附帶資料 })`。
 
 ---
 
