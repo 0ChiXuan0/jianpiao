@@ -27,7 +27,8 @@ const Scene = {
   timed: {}, //           等著在對的步驟發生的事件，例如 { bear: { visual, armed, shown, called } }
   frozen: new Set(), //   讓背景開票動畫暫停的事件（存物件 id）
   cycle: { step: 0, time: 0, ballot: 0, invalid: false, wrongColumn: 0 },
-  idleTimer: 0, //        距離下一個隨機小動作還有幾毫秒
+  speed: 1, //            背景開票動畫的速度（1 = 原本的速度，比 1 小就比較慢；每局由 Game.start 設定）
+  idleTimer: 0,//        距離下一個隨機小動作還有幾毫秒
   intro: null, //         開場宣布中：{ time: 過了幾毫秒, line: 說到第幾句, lines: 要說的話, doneAt: 什麼時候說完 }
   pendingReveal: null, // 先出提示、等一下才出現的事件（停電）：{ targetId, visual, ms: 還要等幾毫秒 }
 
@@ -332,7 +333,8 @@ const Scene = {
     if (Scene.frozen.size > 0) return;
 
     const cycle = Scene.cycle;
-    cycle.time += dt;
+    // 時間乘上速度：speed 比 1 小的話，每一步都要多花一些時間才做完（整個開票變慢）
+    cycle.time += dt * Scene.speed;
     if (cycle.time >= Scene.STEPS[cycle.step].duration) {
       cycle.time = 0;
       cycle.step = (cycle.step + 1) % Scene.STEPS.length;

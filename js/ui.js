@@ -45,6 +45,10 @@ const UI = {
       checkCard: byId('check-card'),
       checkBasis: byId('check-basis'),
       checkNext: byId('check-next'),
+      endMode: byId('end-mode'),
+      btnSwitch: byId('btn-switch'),
+      modePicker: byId('mode-picker'),
+      modeOptions: byId('mode-options'),
       endMissed: byId('end-missed'),
       endTrapsBlock: byId('end-traps-block'),
       endTraps: byId('end-traps'),
@@ -58,15 +62,24 @@ const UI = {
     UI.el.rulesTraps = byId('rules-traps');
     UI.el.soundButtons = [byId('btn-sound'), byId('btn-sound-home')];
 
-    // 首頁：直接開始玩，或先了解規則
-    byId('btn-start').addEventListener('click', () => UI.startGame('home'));
+    // 首頁：直接開始玩，或先了解規則（開始玩之前都會先選版本）
+    byId('btn-start').addEventListener('click', () => UI.showModePicker('home'));
     byId('btn-rules').addEventListener('click', () => UI.showRules());
     byId('btn-rules-back').addEventListener('click', () => UI.showScreen('home'));
-    byId('btn-rules-start').addEventListener('click', () => UI.startGame('rules'));
+    byId('btn-rules-start').addEventListener('click', () => UI.showModePicker('rules'));
+    byId('mode-cancel').addEventListener('click', () => UI.hideModePicker());
+    // 用鍵盤的話，按 Esc 也可以關掉選版本的視窗
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !UI.el.modePicker.hidden) UI.hideModePicker();
+    });
+    UI.makeModeButtons();
+
+    // 結果頁：再玩一次（同一個版本），或換玩另一個版本
     byId('btn-again').addEventListener('click', () => {
       Track.event('play-again');
-      UI.startGame('again');
+      UI.startGame('again', UI.mode);
     });
+    UI.el.btnSwitch.addEventListener('click', () => UI.startGame('switch', UI.otherMode()));
     byId('btn-home').addEventListener('click', () => {
       Track.event('go-home');
       UI.showScreen('home');
@@ -106,15 +119,56 @@ const UI = {
     UI.refreshSoundButtons();
   },
 
-  // 開始一局。from：從哪裡開始的（'home' 首頁、'rules' 規則頁、'again' 再玩一次），統計用
-  startGame(from) {
+  // 開始一局
+  //   from：從哪裡開始的（'home' 首頁、'rules' 規則頁、'again' 再玩一次、'switch' 換版本），統計用
+  //   mode：哪個版本（'easy' 簡單版、'real' 真實世界版）
+  startGame(from, mode) {
     Sound.unlock(); // 瀏覽器規定要按過按鈕才能有聲音
+    UI.mode = mode; // 記起來，「再玩一次」就用同一個版本
     UI.gamesPlayed += 1;
-    Track.event('game-start', { from, game: UI.gamesPlayed });
-    Game.start();
+    Track.event('game-start', { from, game: UI.gamesPlayed, mode });
+    Game.start(mode);
   },
 
   gamesPlayed: 0, // 這次打開網頁後玩了幾局（統計用）
+  mode: 'easy', //  上一局玩的版本
+
+  // ---------- 選版本 ----------
+
+  // 照 config.js 的 modes 做出選版本的按鈕（網頁載入時做一次）
+  makeModeButtons() {
+    for (const key in CONFIG.modes) {
+      const mode = CONFIG.modes[key];
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'mode-option';
+      const name = document.createElement('b');
+      name.textContent = mode.name;
+      const desc = document.createElement('span');
+      desc.textContent = mode.desc;
+      button.append(name, desc);
+      button.addEventListener('click', () => UI.startGame(UI.pickerFrom, key));
+      UI.el.modeOptions.appendChild(button);
+    }
+  },
+
+  // 打開選版本的視窗。from：從哪個畫面按開始的（統計用，選好後傳給 startGame）
+  showModePicker(from) {
+    UI.pickerFrom = from;
+    UI.el.modePicker.hidden = false;
+    UI.el.modeOptions.firstElementChild.focus(); // 用鍵盤的人可以直接按 Enter 選
+  },
+
+  hideModePicker() {
+    UI.el.modePicker.hidden = true;
+  },
+
+  pickerFrom: 'home', // 選版本視窗是從哪個畫面打開的
+
+  // 另一個版本：簡單版的另一個是真實世界版，反過來也是
+  otherMode() {
+    return UI.mode === 'easy' ? 'real' : 'easy';
+  },
 
   // 現在顯示的是哪個畫面：'home'、'rules'、'game'、'end'（統計用）
   currentScreen() {
@@ -204,6 +258,7 @@ const UI = {
     UI.el.screens[name].scrollTop = 0;
     UI.el.modal.hidden = true;
     UI.el.check.hidden = true;
+    UI.el.modePicker.hidden = true;
   },
 
   // 更新上方的愛心、分數、連擊。effect 傳 'hurt' 會讓愛心跳一下
@@ -325,6 +380,8 @@ const UI = {
   showEnd(result) {
     Track.event('end-view');
     const el = UI.el;
+    el.endMode.textContent = CONFIG.modes[result.mode].name; //          這局是哪個版本
+    el.btnSwitch.textContent = '換玩' + CONFIG.modes[UI.otherMode()].name; // 例如「換玩真實世界版」
     el.endScore.textContent = result.score;
     el.endAvg.textContent = UI.formatSeconds(result.avgReaction);
     el.endFast.textContent = UI.formatSeconds(result.fastest);

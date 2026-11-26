@@ -932,6 +932,7 @@
   <section id="screen-end" class="screen scroll" hidden>
     <div class="end-inner">
       <h1 class="end-title">開票結束！</h1>
+      <p id="end-mode" class="end-mode"></p>
       <div class="stats">
         <div class="stat"><small>分數</small><b id="end-score">0</b></div>
         <div class="stat"><small>平均反應</small><b id="end-avg">—</b></div>
@@ -1069,6 +1070,8 @@
 
       <div class="end-buttons">
         <button id="btn-again" class="btn btn-main" type="button">再玩一次</button>
+        <!-- 換玩另一個版本：文字由 ui.js 的 showEnd 填（例如「換玩真實世界版」） -->
+        <button id="btn-switch" class="btn btn-sub" type="button"></button>
         <button id="btn-home" class="btn btn-sub" type="button">回首頁</button>
       </div>
     </div>
@@ -1101,6 +1104,16 @@
         <p id="check-basis" class="basis"></p>
         <button id="check-next" class="btn btn-main" type="button">看結果</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 選版本：按「直接開始玩」或規則頁的「開始玩」後跳出來。
+       兩個版本的按鈕由 ui.js 照 config.js 的 modes 產生（名稱和說明要去 config.js 改） -->
+  <div id="mode-picker" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mode-title">
+      <h2 id="mode-title">要玩哪一版？</h2>
+      <div id="mode-options" class="mode-options"></div>
+      <button id="mode-cancel" class="text-btn" type="button">取消</button>
     </div>
   </div>
 

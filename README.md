@@ -67,14 +67,27 @@ tools/          做圖用的小工具（網站本身用不到）
 
 全部在 **`js/config.js`**，改數字 → 存檔 → 重新整理。
 
+### 兩個版本（簡單版、真實世界版）
+
+玩家按「開始玩」後會先選版本。兩個版本只差在 `modes` 裡的 `speed`（起始速度的倍率）：
+
+| 版本 | `speed` | 一開始隔幾秒出一個事件 | 一開始事件等你幾秒 | 背景唱一張票要多久 |
+|---|---|---|---|---|
+| 真實世界版（`real`） | 1.0 | 8 秒 | 6 秒 | 4.9 秒 |
+| 簡單版（`easy`） | `1 / 1.5`（時間是真實世界版的 1.5 倍） | 12 秒 | 9 秒 | 約 7.4 秒 |
+
+`speed` 越小越慢：程式會把 `spawnInterval.start`、`lifetime.start` 除以 `speed`，背景開票動畫的速度乘上 `speed`。越玩越快的規則、最快能快到多少，兩個版本都一樣（就是下面這張表）。版本的名稱和說明也在 `modes` 裡改。
+
+### 其他數字（兩個版本共用）
+
 | 想調整的 | 改哪個 | 目前的值 |
 |---|---|---|
 | 一開始有幾顆愛心 | `maxHearts` | 5 |
 | 第一個事件多久出現 | `firstEventDelay` | 1.5 秒 |
-| 事件多久出一個 | `spawnInterval.start` | 8.0 秒 |
+| 事件多久出一個 | `spawnInterval.start` | 8.0 秒（簡單版再除以 `speed`） |
 | 變快的速度 | `spawnInterval.multiplier` | 每出一個 ×0.8 |
 | 最快多久出一個 | `spawnInterval.min` | 0.7 秒 |
-| 事件多久沒點算漏掉 | `lifetime.start` | 6.0 秒 |
+| 事件多久沒點算漏掉 | `lifetime.start` | 6.0 秒（簡單版再除以 `speed`） |
 | 存活時間縮短的速度 | `lifetime.multiplier`、`lifetime.everySeconds` | 每 10 秒 ×0.93 |
 | 最短存活時間 | `lifetime.min` | 1.4 秒 |
 | 同時最多幾個事件 | `maxActive` | 1 → 50 秒後 2 → 100 秒後 3 |
@@ -92,7 +105,7 @@ tools/          做圖用的小工具（網站本身用不到）
 | 報告表算錯的機率 | `voteCheck.wrongChance` | 0.5 |
 | 核對票數判斷對／錯 | `voteCheck.rightBonus`、`voteCheck.wrongPenalty` | +200／-300 |
 
-**想讓遊戲簡單一點**：`spawnInterval.start` 調大（例如 10.0）、`spawnInterval.multiplier` 調大（例如 0.9，變快得慢一點）、`lifetime.start` 調大（例如 7.0）、`lifetime.min` 調大（例如 2.0）、`warnSeconds` 調大（提早抖動提醒）。
+**想讓簡單版再簡單一點**：把 `modes.easy.speed` 改成 `1 / 1.8`（時間拉長成 1.8 倍）。**想讓兩個版本都簡單一點**：`spawnInterval.start` 調大（例如 10.0）、`spawnInterval.multiplier` 調大（例如 0.9，變快得慢一點）、`lifetime.start` 調大（例如 7.0）、`lifetime.min` 調大（例如 2.0）、`warnSeconds` 調大（提早抖動提醒）。
 
 ### 想讓某個事件多出現或少出現
 
@@ -209,6 +222,7 @@ tools/          做圖用的小工具（網站本身用不到）
 |---|---|---|
 | 事件名稱、教學卡、依據、停電提示 | `js/events.js` | `name`、`card`、`basis`、`hint` |
 | 首頁、規則頁的標題和說明、結果頁的呼籲和參考連結、核對畫面的固定文字 | `index.html` | 直接搜尋那段文字 |
+| 選版本視窗裡的版本名稱和說明 | `js/config.js` | `modes` |
 | 主任管理員的大字公告（開場、票開完了）、兔子展示空票匭 | `js/scene.js` | `startIntro`、`endCounting`、`showEmptyBox` |
 | 唱票的對話框（「2 號 🐶 柴犬 一票」「更正：」「啊，這張是廢票！」「無效票 1 票」） | `js/scene.js` | `callText`、`endBearEvent`、`enterStep` |
 | 飄字（提醒！、沒注意到⋯）、點錯時的說明視窗、暫停視窗、報告表貼出來的公告 | `js/game.js` | `floatText`、`showModal`、`showBanner` |
@@ -267,10 +281,10 @@ sips -z 630 1200 img/share.png
 | （瀏覽，自動） | 打開網站 | 從哪裡點進來、裝置、國家／城市 |
 | `sound-on`／`sound-off` | 按聲音開關 | `screen` 在哪個畫面 |
 | `rules-open` | 進「先了解規則」 | — |
-| `game-start` | 開始一局 | `from`：home／rules／again，`game`：這次打開網頁後的第幾局 |
+| `game-start` | 開始一局 | `from`：home／rules／again 再玩一次／switch 換玩另一版，`game`：這次打開網頁後的第幾局，`mode`：easy 簡單版／real 真實世界版 |
 | `seal-check` | 開場說完 | `result`：ok 封條沒破／reminded 有提醒到／missed 沒提醒到 |
-| `game-progress` | 撐過 30、60、90、120、180 秒 | `seconds` |
-| `game-over` | 愛心用完 | `seconds`、`score`、`maxCombo`、`missed` 沒提醒到的事件、`traps` 點了的陷阱 |
+| `game-progress` | 撐過 30、60、90、120、180 秒 | `seconds`、`mode` |
+| `game-over` | 愛心用完 | `mode`、`seconds`、`score`、`maxCombo`、`missed` 沒提醒到的事件、`traps` 點了的陷阱 |
 | `vote-check` | 核對報告表作答 | `correct` 對不對、`reportWrong` 報告表本身有沒有算錯 |
 | `end-view` | 看到結果頁 | — |
 | `play-again`／`go-home` | 結果頁的按鈕 | — |
@@ -278,6 +292,8 @@ sips -z 630 1200 img/share.png
 | `leave` | 關掉網頁或切到別的 App | `screen`，遊戲中的話還有 `seconds` |
 
 想看「每一步留下幾成人」：在 Umami 的「Reports → Funnel」新增漏斗，依序選 `game-start` → `game-progress` → `game-over` → `vote-check` → `end-view` → `link-click`。
+
+想比較兩個版本：在 Umami 的事件報表點 `game-start` 或 `game-over`，看 `mode` 這個欄位，就能分開看各有多少人玩、各撐多久。
 
 想分開看從哪個管道來：分享時在網址後面加 `?utm_source=line`（或 fb、ig），Umami 的 UTM 報表會分開統計。
 

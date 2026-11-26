@@ -28,15 +28,19 @@ const Game = {
     document.addEventListener('visibilitychange', Game.onVisibilityChange);
   },
 
-  // 開始新的一局
-  start() {
+  // 開始新的一局。mode：哪個版本（'easy' 簡單版、'real' 真實世界版，見 config.js 的 modes）
+  start(mode) {
+    const speed = CONFIG.modes[mode].speed; //       起始速度的倍率
     const candidates = Game.shuffle(CANDIDATES); // 每局隨機分配號次
     const count = Game.makeVoteCount(); //          這一局最後報告表上的票數
     Scene.reset(candidates);
+    Scene.speed = speed; //                         背景唱票的速度也跟著這個版本
     Scene.startIntro(count.voters);
 
     const now = performance.now();
     Game.s = {
+      mode, //             這局是哪個版本
+      speed, //            這個版本的起始速度倍率
       running: true, //    遊戲進行中
       paused: false, //    暫停中（看提示卡、切到別的 App）
       pausedAt: 0, //      這次暫停是什麼時候開始的
@@ -54,7 +58,7 @@ const Game = {
       combo: 0,
       maxCombo: 0,
 
-      spawnInterval: CONFIG.spawnInterval.start, // 現在的事件產生間隔（秒）
+      spawnInterval: CONFIG.spawnInterval.start / speed, // 現在的事件產生間隔（秒）；簡單版一開始比較久
       nextSpawnAt: Infinity, // 下一個事件最早什麼時候出現（開場說完才排）
       nextEvent: null, //    已經抽好、等著出現的下一個事件
       active: [], //         正在發生的事件
@@ -131,7 +135,7 @@ const Game = {
     if (s.introRunning) return;
     const target = Game.PROGRESS_SECONDS[s.nextMilestone];
     if (target !== undefined && now - s.startedAt >= target * 1000) {
-      Track.event('game-progress', { seconds: target });
+      Track.event('game-progress', { seconds: target, mode: s.mode });
       s.nextMilestone += 1;
     }
   },
@@ -141,8 +145,9 @@ const Game = {
   // 第 seconds 秒時，事件的存活時間（秒）
   lifetimeAt(seconds) {
     const c = CONFIG.lifetime;
+    const start = c.start / Game.s.speed; //              簡單版一開始等比較久
     const times = Math.floor(seconds / c.everySeconds); // 已經縮短過幾次
-    return Math.max(c.min, c.start * Math.pow(c.multiplier, times));
+    return Math.max(c.min, start * Math.pow(c.multiplier, times));
   },
 
   // 第 seconds 秒時，同時最多幾個事件
@@ -413,6 +418,7 @@ const Game = {
     s.running = false;
     s.endedAt = Game.now();
     Track.event('game-over', {
+      mode: s.mode,
       seconds: Math.round((s.endedAt - s.startedAt) / 1000),
       score: s.score,
       maxCombo: s.maxCombo,
@@ -495,6 +501,7 @@ const Game = {
     const times = s.reactionTimes;
     const total = times.reduce((sum, t) => sum + t, 0);
     return {
+      mode: s.mode, // 這局是哪個版本
       score: s.score,
       avgReaction: times.length > 0 ? total / times.length : null, // 毫秒
       fastest: times.length > 0 ? Math.min(...times) : null, //     毫秒

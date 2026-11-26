@@ -732,6 +732,62 @@ a {
   font-size: 13px;
 }
 
+/* ---------- 選版本 ---------- */
+.mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 6px 0 8px;
+}
+
+/* 每個版本是一張可以按的卡片：上面版本名稱，下面一行說明 */
+.mode-option {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--ink);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mode-option:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.mode-option:nth-child(1) { background: var(--mint); } /*  簡單版 */
+.mode-option:nth-child(2) { background: var(--peach); } /* 真實世界版 */
+
+.mode-option b {
+  display: block;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.mode-option span {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-line; /* config.js 說明文字裡的 \n 會變成換行 */
+}
+
+/* 結果頁標題下面：這局是哪個版本 */
+.end-mode {
+  display: inline-block;
+  margin: -6px 0 16px;
+  padding: 3px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  background: #FFFFFF;
+}
+
 /* ---------- 開票結束：核對票數 ---------- */
 .check-table {
   width: 100%;
@@ -940,10 +996,16 @@ a {
   text-wrap: pretty; /* 避免最後一行只剩一兩個字 */
 }
 
+/* 結果頁最下面的三個按鈕：由上往下排（再玩一次 → 換玩另一版 → 回首頁） */
 .end-buttons {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   margin-top: 28px;
+}
+
+.end-buttons .btn {
+  width: 100%;
+  max-width: 320px;
 }
