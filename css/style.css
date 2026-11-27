@@ -972,6 +972,20 @@ a {
   font-size: 20px;
 }
 
+/* 紫色區塊裡的大按鈕「去認領一間開票所」：滿版寬，下面一行小字說明連到哪 */
+.callout-cta {
+  display: block;
+  width: 100%;
+  margin: 16px 0 0;
+}
+
+.callout p.callout-cta-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  text-align: center;
+  opacity: 0.8;
+}
+
 .callout h3 {
   margin: 16px 0 6px;
   font-size: 16px;
